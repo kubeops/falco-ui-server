@@ -96,17 +96,6 @@ func (c *FakeRuntimeEvents) Update(ctx context.Context, runtimeEvent *v1alpha1.R
 	return obj.(*v1alpha1.RuntimeEvent), err
 }
 
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeRuntimeEvents) UpdateStatus(ctx context.Context, runtimeEvent *v1alpha1.RuntimeEvent, opts v1.UpdateOptions) (*v1alpha1.RuntimeEvent, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(runtimeeventsResource, "status", runtimeEvent), &v1alpha1.RuntimeEvent{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.RuntimeEvent), err
-}
-
 // Delete takes name of the runtimeEvent and deletes it. Returns an error if one occurs.
 func (c *FakeRuntimeEvents) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.

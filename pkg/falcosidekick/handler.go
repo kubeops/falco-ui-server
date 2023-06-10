@@ -1,0 +1,226 @@
+/*
+Copyright AppsCode Inc. and Contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package falcosidekick
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"strings"
+	"text/template"
+
+	"kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
+	"kubeops.dev/falco-ui-server/pkg/falcosidekick/types"
+
+	"github.com/google/uuid"
+	jsonx "gomodules.xyz/encoding/json"
+	core "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	rttypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const testRule string = "Test rule"
+
+// Handler is Falco Sidekick main handler (default).
+func Handler(kc client.Client) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body == nil {
+			http.Error(w, "Please send a valid request body", http.StatusBadRequest)
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			http.Error(w, "Please send with post http method", http.StatusBadRequest)
+			return
+		}
+
+		falcopayload, err := newFalcoPayload(r.Body)
+		if err != nil || !falcopayload.Check() {
+			http.Error(w, "Please send a valid request body", http.StatusBadRequest)
+			return
+		}
+
+		mustForwardEvent(kc, falcopayload)
+	})
+}
+
+func newFalcoPayload(payload io.Reader) (types.FalcoPayload, error) {
+	var falcopayload types.FalcoPayload
+
+	d := json.NewDecoder(payload)
+	d.UseNumber()
+
+	err := d.Decode(&falcopayload)
+	if err != nil {
+		return types.FalcoPayload{}, err
+	}
+
+	if len(config.Customfields) > 0 {
+		if falcopayload.OutputFields == nil {
+			falcopayload.OutputFields = make(map[string]interface{})
+		}
+		for key, value := range config.Customfields {
+			falcopayload.OutputFields[key] = value
+		}
+	}
+
+	if falcopayload.Source == "" {
+		falcopayload.Source = "syscalls"
+	}
+
+	falcopayload.UUID = uuid.New().String()
+
+	var kn, kp string
+	for i, j := range falcopayload.OutputFields {
+		if j != nil {
+			if i == "k8s.ns.name" {
+				kn = j.(string)
+			}
+			if i == "k8s.pod.name" {
+				kp = j.(string)
+			}
+		}
+	}
+
+	if len(config.Templatedfields) > 0 {
+		if falcopayload.OutputFields == nil {
+			falcopayload.OutputFields = make(map[string]interface{})
+		}
+		for key, value := range config.Templatedfields {
+			tmpl, err := template.New("").Parse(value)
+			if err != nil {
+				log.Printf("[ERROR] : Parsing error for templated field '%v': %v\n", key, err)
+				continue
+			}
+			v := new(bytes.Buffer)
+			if err := tmpl.Execute(v, falcopayload.OutputFields); err != nil {
+				log.Printf("[ERROR] : Parsing error for templated field '%v': %v\n", key, err)
+			}
+			falcopayload.OutputFields[key] = v.String()
+		}
+	}
+
+	promLabels := map[string]string{"rule": falcopayload.Rule, "priority": falcopayload.Priority.String(), "k8s_ns_name": kn, "k8s_pod_name": kp}
+	if falcopayload.Hostname != "" {
+		promLabels["hostname"] = falcopayload.Hostname
+	}
+
+	for key, value := range config.Customfields {
+		if regPromLabels.MatchString(key) {
+			promLabels[key] = value
+		}
+	}
+	for _, i := range config.Prometheus.ExtraLabelsList {
+		promLabels[strings.ReplaceAll(i, ".", "_")] = ""
+		for key, value := range falcopayload.OutputFields {
+			if key == i && regPromLabels.MatchString(strings.ReplaceAll(key, ".", "_")) {
+				switch value.(type) {
+				case string:
+					promLabels[strings.ReplaceAll(key, ".", "_")] = fmt.Sprintf("%v", value)
+				default:
+					continue
+				}
+			}
+		}
+	}
+
+	if config.BracketReplacer != "" {
+		for i, j := range falcopayload.OutputFields {
+			if strings.Contains(i, "[") {
+				falcopayload.OutputFields[strings.ReplaceAll(strings.ReplaceAll(i, "]", ""), "[", config.BracketReplacer)] = j
+				delete(falcopayload.OutputFields, i)
+			}
+		}
+	}
+
+	if config.Debug {
+		body, _ := json.Marshal(falcopayload)
+		log.Printf("[DEBUG] : Falco's payload : %v\n", string(body))
+	}
+
+	return falcopayload, nil
+}
+
+func forwardEvent(kc client.Client, payload types.FalcoPayload) error {
+	obj := v1alpha1.RuntimeEvent{
+		TypeMeta: v1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName:      "falco-",
+			UID:               rttypes.UID(payload.UUID),
+			CreationTimestamp: metav1.NewTime(payload.Time),
+			Labels:            map[string]string{},
+			Annotations:       nil,
+		},
+		Spec: v1alpha1.RuntimeEventSpec{
+			UUID:     payload.UUID,
+			Output:   payload.Output,
+			Priority: payload.Priority.String(),
+			Rule:     payload.Rule,
+			Time:     metav1.NewTime(payload.Time),
+			// OutputFields: apiextensionsv1.JSON{},
+			Source:   payload.Source,
+			Tags:     payload.Tags,
+			Hostname: payload.Hostname,
+		},
+	}
+
+	fields, err := jsonx.Marshal(payload.OutputFields)
+	if err != nil {
+		return err
+	}
+	obj.Spec.OutputFields = apiextensionsv1.JSON{Raw: fields}
+
+	var ns string
+	for k, v := range payload.OutputFields {
+		switch k {
+		case "k8s.ns.name":
+			ns = v.(string)
+			obj.Labels[k] = ns
+		case "k8s.pod.name":
+			obj.Labels[k] = v.(string)
+		}
+	}
+
+	if ns != "" && payload.Hostname != "" {
+		var pod core.Pod
+		key := client.ObjectKey{
+			Namespace: ns,
+			Name:      payload.Hostname,
+		}
+		if err := kc.Get(context.TODO(), key, &pod); err == nil {
+			obj.Labels["k8s.node.name"] = pod.Spec.NodeName
+			obj.Spec.Nodename = pod.Spec.NodeName
+		}
+	}
+
+	return kc.Create(context.TODO(), &obj)
+}
+
+func mustForwardEvent(kc client.Client, payload types.FalcoPayload) {
+	err := forwardEvent(kc, payload)
+	if client.IgnoreAlreadyExists(err) != nil {
+		klog.ErrorS(err, "failed to write falco event")
+	}
+}

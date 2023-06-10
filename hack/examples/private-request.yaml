@@ -1,9 +1,0 @@
-apiVersion: falco.appscode.com/v1alpha1
-kind: ImageScanRequest
-metadata:
-  generateName: private-test-
-spec:
-  image: 'arnobkumarsaha/private-test:01'
-  namespace: default
-  pullSecrets:
-  - name: pull-secret

@@ -26,10 +26,12 @@ import (
 	"kubeops.dev/falco-ui-server/apis/falco/install"
 	api "kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
 	"kubeops.dev/falco-ui-server/pkg/controllers/runtimeevent"
+	"kubeops.dev/falco-ui-server/pkg/falcosidekick"
 	cvestorage "kubeops.dev/falco-ui-server/pkg/registry/falco/runtimeevent"
 
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -43,6 +45,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog/v2/klogr"
 	cu "kmodules.xyz/client-go/client"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -140,10 +143,22 @@ func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
 		HealthProbeBindAddress: "",
 		LeaderElection:         false,
 		LeaderElectionID:       "5b87adeb.falco.appscode.com",
-		ClientDisableCacheFor: []client.Object{
-			&core.Pod{},
+		//ClientDisableCacheFor: []client.Object{
+		//	&core.Pod{},
+		//},
+		NewClient: cu.NewClient,
+		NewCache: func(config *restclient.Config, opts cache.Options) (cache.Cache, error) {
+			if opts.SelectorsByObject == nil {
+				opts.SelectorsByObject = map[client.Object]cache.ObjectSelector{}
+			}
+			// https://github.com/falcosecurity/charts/blob/master/falco/templates/_helpers.tpl#L56-L57
+			opts.SelectorsByObject[&core.Pod{}] = cache.ObjectSelector{
+				Label: labels.SelectorFromSet(map[string]string{
+					"app.kubernetes.io/name": "falco",
+				}),
+			}
+			return cache.New(config, opts)
 		},
-		NewClient:  cu.NewClient,
 		SyncPeriod: &c.ExtraConfig.ResyncPeriod,
 	})
 	if err != nil {
@@ -156,6 +171,10 @@ func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
 		ReportTTL: c.ExtraConfig.EventTTLPeriod,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "RuntimeEvent")
+		os.Exit(1)
+	}
+	if err = (&falcosidekick.PodReconciler{}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Pod")
 		os.Exit(1)
 	}
 
@@ -174,8 +193,7 @@ func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
 			if err != nil {
 				return nil, err
 			}
-			v1alpha1storage[api.ResourceRuntimeEvents] = storage.Controller
-			v1alpha1storage[api.ResourceRuntimeEvents+"/status"] = storage.Status
+			v1alpha1storage[api.ResourceRuntimeEvents] = storage
 		}
 		apiGroupInfo.VersionedResourcesStorageMap["v1alpha1"] = v1alpha1storage
 
@@ -183,18 +201,11 @@ func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
 			return nil, err
 		}
 	}
-	/*
-		{
-			prefix := c.ExtraConfig.FileServerPathPrefix
-			if !strings.HasPrefix(prefix, "/") {
-				prefix = "/" + prefix
-			}
-			if !strings.HasSuffix(prefix, "/") {
-				prefix = prefix + "/"
-			}
-			fmt.Println(prefix)
-			// genericServer.Handler.NonGoRestfulMux.HandlePrefix(prefix, fileserver.Router(prefix, c.ExtraConfig.FileServerFilesDir))
+	{
+		prefix := "/falcoevents"
+		if err := mgr.AddMetricsExtraHandler(prefix, falcosidekick.Handler(mgr.GetClient())); err != nil {
+			return nil, err
 		}
-	*/
+	}
 	return s, nil
 }

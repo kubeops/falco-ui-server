@@ -1,6 +1,0 @@
-apiVersion: falco.appscode.com/v1alpha1
-kind: ImageScanRequest
-metadata:
-  generateName: hello-melange-
-spec:
-  image: 'ghcr.io/arnobkumarsaha/hello-melange-apko/go'

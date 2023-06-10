@@ -360,7 +360,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEvent":       schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEvent(ref),
 		"kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEventList":   schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEventList(ref),
 		"kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEventSpec":   schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEventSpec(ref),
-		"kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEventStatus": schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEventStatus(ref),
 	}
 }
 
@@ -17633,18 +17632,11 @@ func schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEvent(ref common.Referenc
 							Ref:         ref("kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEventSpec"),
 						},
 					},
-					"status": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Status holds all the SingleReport-related details of the specified image",
-							Default:     map[string]interface{}{},
-							Ref:         ref("kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEventStatus"),
-						},
-					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta", "kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEventSpec", "kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEventStatus"},
+			"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta", "kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEventSpec"},
 	}
 }
 
@@ -17768,21 +17760,17 @@ func schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEventSpec(ref common.Refe
 							Format: "",
 						},
 					},
+					"nodename": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 				},
 				Required: []string{"output", "priority", "rule", "time", "outputFields", "source"},
 			},
 		},
 		Dependencies: []string{
 			"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1.JSON", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
-	}
-}
-
-func schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEventStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
-			},
-		},
 	}
 }

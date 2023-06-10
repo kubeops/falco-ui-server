@@ -438,7 +438,7 @@ lint: $(BUILD_DIRS)
 $(BUILD_DIRS):
 	@mkdir -p $@
 
-KUBE_NAMESPACE    ?= kubeops
+KUBE_NAMESPACE    ?= falco
 REGISTRY_SECRET   ?=
 IMAGE_PULL_POLICY	?= IfNotPresent
 
@@ -497,7 +497,7 @@ add-license:
 		--env HTTP_PROXY=$(HTTP_PROXY)                   \
 		--env HTTPS_PROXY=$(HTTPS_PROXY)                 \
 		$(BUILD_IMAGE)                                   \
-		ltag -t "./hack/license" --excludes "vendor contrib bin" -v
+		ltag -t "./hack/license" --excludes "vendor contrib bin falcosidekick" -v
 
 .PHONY: check-license
 check-license:
@@ -510,7 +510,7 @@ check-license:
 		--env HTTP_PROXY=$(HTTP_PROXY)                   \
 		--env HTTPS_PROXY=$(HTTPS_PROXY)                 \
 		$(BUILD_IMAGE)                                   \
-		ltag -t "./hack/license" --excludes "vendor contrib bin" --check -v
+		ltag -t "./hack/license" --excludes "vendor contrib bin falcosidekick" --check -v
 
 .PHONY: ci
 ci: check-license lint build #unit-tests cover verify

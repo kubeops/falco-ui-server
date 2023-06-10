@@ -29,8 +29,7 @@ import (
 type RuntimeEvent struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
-	Spec   RuntimeEventSpec
-	Status RuntimeEventStatus
+	Spec RuntimeEventSpec
 }
 
 type RuntimeEventSpec struct {
@@ -43,9 +42,8 @@ type RuntimeEventSpec struct {
 	Source       string
 	Tags         []string
 	Hostname     string
+	Nodename     string
 }
-
-type RuntimeEventStatus struct{}
 
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

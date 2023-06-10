@@ -84,7 +84,7 @@ func (strategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
 // PrepareForCreate clears the status of a replication controller before creation.
 func (strategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 	controller := obj.(*api.RuntimeEvent)
-	controller.Status = api.RuntimeEventStatus{}
+	// controller.Status = api.RuntimeEventStatus{}
 
 	controller.Generation = 1
 }
@@ -93,8 +93,8 @@ func (strategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
 func (strategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {
 	newController := obj.(*api.RuntimeEvent)
 	oldController := old.(*api.RuntimeEvent)
-	// update is not allowed to set status
-	newController.Status = oldController.Status
+	//// update is not allowed to set status
+	//newController.Status = oldController.Status
 
 	// Any changes to the spec increment the generation number, any changes to the
 	// status should reflect the generation number of the corresponding object. We push

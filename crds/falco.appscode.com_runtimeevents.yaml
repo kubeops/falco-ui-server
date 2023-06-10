@@ -35,6 +35,8 @@ spec:
             properties:
               hostname:
                 type: string
+              nodename:
+                type: string
               output:
                 type: string
               outputFields:
@@ -61,10 +63,6 @@ spec:
             - rule
             - source
             - time
-            type: object
-          status:
-            description: Status holds all the SingleReport-related details of the
-              specified image
             type: object
         type: object
     served: true

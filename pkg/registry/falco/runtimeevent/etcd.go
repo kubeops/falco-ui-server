@@ -17,35 +17,22 @@ limitations under the License.
 package request
 
 import (
-	"context"
-
 	api "kubeops.dev/falco-ui-server/apis/falco"
 	"kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/registry/rest"
-	"sigs.k8s.io/structured-merge-diff/v4/fieldpath"
 )
 
 // ControllerStorage includes dummy storage for RuntimeEvents and for Status subresource.
 type ControllerStorage struct {
 	Controller *REST
-	Status     *StatusREST
 }
 
-func NewStorage(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (ControllerStorage, error) {
-	controllerREST, statusREST, err := NewREST(scheme, optsGetter)
-	if err != nil {
-		return ControllerStorage{}, err
-	}
-
-	return ControllerStorage{
-		Controller: controllerREST,
-		Status:     statusREST,
-	}, nil
+func NewStorage(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*REST, error) {
+	return NewREST(scheme, optsGetter)
 }
 
 type REST struct {
@@ -53,7 +40,7 @@ type REST struct {
 }
 
 // NewREST returns a RESTStorage object that will work against replication controllers.
-func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*REST, *StatusREST, error) {
+func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*REST, error) {
 	strategy := NewStrategy(scheme)
 
 	store := &genericregistry.Store{
@@ -71,7 +58,7 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*RES
 	}
 	options := &generic.StoreOptions{RESTOptions: optsGetter, AttrFunc: GetAttrs}
 	if err := store.CompleteWithOptions(options); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	statusStrategy := statusStrategy{strategy: strategy}
@@ -79,7 +66,7 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*RES
 	statusStore.UpdateStrategy = statusStrategy
 	statusStore.ResetFieldsStrategy = statusStrategy
 
-	return &REST{store}, &StatusREST{store: &statusStore}, nil
+	return &REST{store}, nil
 }
 
 // Implement ShortNamesProvider
@@ -96,40 +83,4 @@ var _ rest.CategoriesProvider = &REST{}
 // Categories implements the CategoriesProvider interface. Returns a list of categories a resource is part of.
 func (r *REST) Categories() []string {
 	return []string{"falco"}
-}
-
-// StatusREST implements the REST endpoint for changing the status of a replication controller
-type StatusREST struct {
-	store *genericregistry.Store
-}
-
-func (r *StatusREST) New() runtime.Object {
-	return &api.RuntimeEvent{}
-}
-
-// Destroy cleans up resources on shutdown.
-func (r *StatusREST) Destroy() {
-	// Given that underlying store is shared with REST,
-	// we don't destroy it here explicitly.
-}
-
-// Get retrieves the object from the storage. It is required to support Patch.
-func (r *StatusREST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
-	return r.store.Get(ctx, name, options)
-}
-
-// Update alters the status subset of an object.
-func (r *StatusREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
-	// We are explicitly setting forceAllowCreate to false in the call to the underlying storage because
-	// subresources should never allow create on update.
-	return r.store.Update(ctx, name, objInfo, createValidation, updateValidation, false, options)
-}
-
-// GetResetFields implements rest.ResetFieldsStrategy
-func (r *StatusREST) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
-	return r.store.GetResetFields()
-}
-
-func (r *StatusREST) ConvertToTable(ctx context.Context, object runtime.Object, tableOptions runtime.Object) (*metav1.Table, error) {
-	return r.store.ConvertToTable(ctx, object, tableOptions)
 }

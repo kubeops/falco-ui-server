@@ -38,9 +38,6 @@ type RuntimeEvent struct {
 
 	// Spec describes the attributes for the Image Scan SingleReport
 	Spec RuntimeEventSpec `json:"spec,omitempty"`
-
-	// Status holds all the SingleReport-related details of the specified image
-	Status RuntimeEventStatus `json:"status,omitempty"`
 }
 
 type RuntimeEventSpec struct {
@@ -53,9 +50,8 @@ type RuntimeEventSpec struct {
 	Source       string               `json:"source"`
 	Tags         []string             `json:"tags,omitempty"`
 	Hostname     string               `json:"hostname,omitempty"`
+	Nodename     string               `json:"nodename,omitempty"`
 }
-
-type RuntimeEventStatus struct{}
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
