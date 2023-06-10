@@ -23,7 +23,7 @@ import (
 
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
-	v1alpha1 "kubeops.dev/scanner/apis/scanner/v1alpha1"
+	v1alpha1 "kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
 )
 
 // GenericInformer is type of SharedIndexInformer which will locate and delegate to other
@@ -52,13 +52,9 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=scanner.appscode.com, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("imagescanreports"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Scanner().V1alpha1().ImageScanReports().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("imagescanrequests"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Scanner().V1alpha1().ImageScanRequests().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("vulnerabilities"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Scanner().V1alpha1().Vulnerabilities().Informer()}, nil
+	// Group=falco.appscode.com, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("runtimeevents"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Falco().V1alpha1().RuntimeEvents().Informer()}, nil
 
 	}
 

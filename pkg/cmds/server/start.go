@@ -22,8 +22,8 @@ import (
 	"io"
 	"net"
 
-	api "kubeops.dev/scanner/apis/scanner/v1alpha1"
-	"kubeops.dev/scanner/pkg/apiserver"
+	api "kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
+	"kubeops.dev/falco-ui-server/pkg/apiserver"
 
 	"github.com/spf13/pflag"
 	v "gomodules.xyz/x/version"
@@ -39,10 +39,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-const defaultEtcdPathPrefix = "/registry/scanner.appscode.com"
+const defaultEtcdPathPrefix = "/registry/falco.appscode.com"
 
-// ScannerServerOptions contains state for master/api server
-type ScannerServerOptions struct {
+// FalcoUIServerOptions contains state for master/api server
+type FalcoUIServerOptions struct {
 	RecommendedOptions *genericoptions.RecommendedOptions
 	ExtraOptions       *ExtraOptions
 
@@ -50,10 +50,10 @@ type ScannerServerOptions struct {
 	StdErr io.Writer
 }
 
-// NewScannerServerOptions returns a new ScannerServerOptions
-func NewScannerServerOptions(out, errOut io.Writer) *ScannerServerOptions {
+// NewFalcoUIServerOptions returns a new FalcoUIServerOptions
+func NewFalcoUIServerOptions(out, errOut io.Writer) *FalcoUIServerOptions {
 	_ = feature.DefaultMutableFeatureGate.Set(fmt.Sprintf("%s=false", features.APIPriorityAndFairness))
-	o := &ScannerServerOptions{
+	o := &FalcoUIServerOptions{
 		RecommendedOptions: genericoptions.NewRecommendedOptions(
 			defaultEtcdPathPrefix,
 			apiserver.Codecs.LegacyCodec(
@@ -69,13 +69,13 @@ func NewScannerServerOptions(out, errOut io.Writer) *ScannerServerOptions {
 	return o
 }
 
-func (o ScannerServerOptions) AddFlags(fs *pflag.FlagSet) {
+func (o FalcoUIServerOptions) AddFlags(fs *pflag.FlagSet) {
 	o.RecommendedOptions.AddFlags(fs)
 	o.ExtraOptions.AddFlags(fs)
 }
 
-// Validate validates ScannerServerOptions
-func (o ScannerServerOptions) Validate(args []string) error {
+// Validate validates FalcoUIServerOptions
+func (o FalcoUIServerOptions) Validate(args []string) error {
 	var errors []error
 	errors = append(errors, o.RecommendedOptions.Validate()...)
 	errors = append(errors, o.ExtraOptions.Validate()...)
@@ -83,12 +83,12 @@ func (o ScannerServerOptions) Validate(args []string) error {
 }
 
 // Complete fills in fields required to have valid data
-func (o *ScannerServerOptions) Complete() error {
+func (o *FalcoUIServerOptions) Complete() error {
 	return nil
 }
 
-// Config returns config for the api server given ScannerServerOptions
-func (o *ScannerServerOptions) Config() (*apiserver.Config, error) {
+// Config returns config for the api server given FalcoUIServerOptions
+func (o *FalcoUIServerOptions) Config() (*apiserver.Config, error) {
 	// TODO have a "real" external address
 	if err := o.RecommendedOptions.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil, []net.IP{net.ParseIP("127.0.0.1")}); err != nil {
 		return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
@@ -106,21 +106,16 @@ func (o *ScannerServerOptions) Config() (*apiserver.Config, error) {
 			api.GetOpenAPIDefinitions,
 		),
 		openapi.NewDefinitionNamer(apiserver.Scheme))
-	serverConfig.OpenAPIConfig.Info.Title = "scanner"
+	serverConfig.OpenAPIConfig.Info.Title = "Falco UI Server"
 	serverConfig.OpenAPIConfig.Info.Version = v.Version.Version
 	serverConfig.OpenAPIConfig.IgnorePrefixes = []string{
 		"/swaggerapi",
-		fmt.Sprintf("/apis/%s/%s", api.SchemeGroupVersion, api.ResourceImageScanRequests),
-		fmt.Sprintf("/apis/%s/%s", api.SchemeGroupVersion, api.ResourceImageScanReports),
+		fmt.Sprintf("/apis/%s/%s", api.SchemeGroupVersion, api.ResourceRuntimeEvents),
 	}
 
 	extraConfig := apiserver.ExtraConfig{
-		ClientConfig:         serverConfig.ClientConfig,
-		ScannerImage:         o.ExtraOptions.ScannerImage,
-		TrivyImage:           o.ExtraOptions.TrivyImage,
-		TrivyDBCacherImage:   o.ExtraOptions.TrivyDBCacherImage,
-		FileServerAddr:       o.ExtraOptions.FileServerAddr,
-		ScanRequestTTLPeriod: o.ExtraOptions.ScanRequestTTLPeriod,
+		ClientConfig:   serverConfig.ClientConfig,
+		EventTTLPeriod: o.ExtraOptions.EventTTLPeriod,
 	}
 	if err := o.ExtraOptions.ApplyTo(&extraConfig); err != nil {
 		return nil, err
@@ -133,8 +128,8 @@ func (o *ScannerServerOptions) Config() (*apiserver.Config, error) {
 	return config, nil
 }
 
-// Run starts a new ScannerServer given ScannerServerOptions
-func (o ScannerServerOptions) Run(ctx context.Context) error {
+// Run starts a new FalcoUIServer given FalcoUIServerOptions
+func (o FalcoUIServerOptions) Run(ctx context.Context) error {
 	config, err := o.Config()
 	if err != nil {
 		return err
@@ -145,7 +140,7 @@ func (o ScannerServerOptions) Run(ctx context.Context) error {
 		return err
 	}
 
-	server.GenericAPIServer.AddPostStartHookOrDie("start-scanner-informers", func(context genericapiserver.PostStartHookContext) error {
+	server.GenericAPIServer.AddPostStartHookOrDie("start-informers", func(context genericapiserver.PostStartHookContext) error {
 		config.GenericConfig.SharedInformerFactory.Start(context.StopCh)
 		return nil
 	})
@@ -165,8 +160,5 @@ func (o ScannerServerOptions) Run(ctx context.Context) error {
 	}
 
 	<-ctx.Done()
-	if server.NatsClient != nil {
-		return server.NatsClient.Drain()
-	}
 	return nil
 }

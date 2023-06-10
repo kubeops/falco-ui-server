@@ -2,15 +2,15 @@ domain: appscode.com
 layout:
 - go.kubebuilder.io/v3
 multigroup: true
-projectName: scanner
-repo: kubeops.dev/scanner
+projectName: falco
+repo: kubeops.dev/falco-ui-server
 resources:
 - api:
     crdVersion: v1
     namespaced: true
   domain: appscode.com
-  group: scanner
+  group: falco
   kind: ScanImage
-  path: kubeops.dev/scanner/apis/scanner/v1alpha1
+  path: kubeops.dev/falco-ui-server/apis/falco/v1alpha1
   version: v1alpha1
 version: "3"

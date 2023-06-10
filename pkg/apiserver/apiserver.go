@@ -20,24 +20,14 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
-	"kubeops.dev/scanner/apis/scanner"
-	"kubeops.dev/scanner/apis/scanner/install"
-	api "kubeops.dev/scanner/apis/scanner/v1alpha1"
-	"kubeops.dev/scanner/pkg/backend"
-	"kubeops.dev/scanner/pkg/controllers/scanreport"
-	"kubeops.dev/scanner/pkg/controllers/scanrequest"
-	"kubeops.dev/scanner/pkg/fileserver"
-	reportstorage "kubeops.dev/scanner/pkg/registry/scanner/report"
-	requeststorage "kubeops.dev/scanner/pkg/registry/scanner/request"
-	cvestorage "kubeops.dev/scanner/pkg/registry/scanner/vulnerability"
+	"kubeops.dev/falco-ui-server/apis/falco"
+	"kubeops.dev/falco-ui-server/apis/falco/install"
+	api "kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
+	"kubeops.dev/falco-ui-server/pkg/controllers/runtimeevent"
+	cvestorage "kubeops.dev/falco-ui-server/pkg/registry/falco/runtimeevent"
 
-	"github.com/nats-io/nats.go"
-	auditlib "go.bytebuilders.dev/audit/lib"
-	proxyserver "go.bytebuilders.dev/license-proxyserver/apis/proxyserver/v1alpha1"
-	"go.bytebuilders.dev/license-verifier/apis/licenses/v1alpha1"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -53,8 +43,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog/v2/klogr"
 	cu "kmodules.xyz/client-go/client"
-	"kmodules.xyz/client-go/discovery"
-	"kmodules.xyz/client-go/tools/clusterid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -89,35 +77,11 @@ func init() {
 
 // ExtraConfig holds custom apiserver config
 type ExtraConfig struct {
-	ClientConfig         *restclient.Config
-	KubeClient           kubernetes.Interface
-	KubeInformerFactory  informers.SharedInformerFactory
-	ResyncPeriod         time.Duration
-	LicenseFile          string
-	License              v1alpha1.License
-	CacheDir             string
-	NATSAddr             string
-	NATSCredFile         string
-	FileServerPathPrefix string
-	FileServerFilesDir   string
-	ScannerImage         string
-	TrivyImage           string
-	TrivyDBCacherImage   string
-	FileServerAddr       string
-	ScanRequestTTLPeriod time.Duration
-	ScanReportTTLPeriod  time.Duration
-}
-
-func (c ExtraConfig) LicenseProvided() bool {
-	if c.LicenseFile != "" {
-		return true
-	}
-
-	ok, _ := discovery.HasGVK(
-		c.KubeClient.Discovery(),
-		proxyserver.SchemeGroupVersion.String(),
-		proxyserver.ResourceKindLicenseRequest)
-	return ok
+	ClientConfig        *restclient.Config
+	KubeClient          kubernetes.Interface
+	KubeInformerFactory informers.SharedInformerFactory
+	ResyncPeriod        time.Duration
+	EventTTLPeriod      time.Duration
 }
 
 // Config defines the config for the apiserver
@@ -126,11 +90,10 @@ type Config struct {
 	ExtraConfig   ExtraConfig
 }
 
-// ScannerServer contains state for a Kubernetes cluster master/api server.
-type ScannerServer struct {
+// FalcoUIServer contains state for a Kubernetes cluster master/api server.
+type FalcoUIServer struct {
 	GenericAPIServer *genericapiserver.GenericAPIServer
 	Manager          manager.Manager
-	NatsClient       *nats.Conn
 }
 
 type completedConfig struct {
@@ -158,9 +121,9 @@ func (cfg *Config) Complete() CompletedConfig {
 	return CompletedConfig{&c}
 }
 
-// New returns a new instance of ScannerServer from the given config.
-func (c completedConfig) New(ctx context.Context) (*ScannerServer, error) {
-	genericServer, err := c.GenericConfig.New("scanner", genericapiserver.NewEmptyDelegate())
+// New returns a new instance of FalcoUIServer from the given config.
+func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
+	genericServer, err := c.GenericConfig.New("falco-ui-server", genericapiserver.NewEmptyDelegate())
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +139,7 @@ func (c completedConfig) New(ctx context.Context) (*ScannerServer, error) {
 		Port:                   0,
 		HealthProbeBindAddress: "",
 		LeaderElection:         false,
-		LeaderElectionID:       "5b87adeb.scanner.appscode.com",
+		LeaderElectionID:       "5b87adeb.falco.appscode.com",
 		ClientDisableCacheFor: []client.Object{
 			&core.Pod{},
 		},
@@ -187,102 +150,32 @@ func (c completedConfig) New(ctx context.Context) (*ScannerServer, error) {
 		return nil, fmt.Errorf("unable to start manager, reason: %v", err)
 	}
 
-	var nc *nats.Conn
-
-	mapper, err := discovery.NewDynamicResourceMapper(c.ExtraConfig.ClientConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	// audit event auditor
-	// WARNING: https://stackoverflow.com/a/46275411/244009
-	var auditor *auditlib.EventPublisher
-	if c.ExtraConfig.LicenseProvided() {
-		cmeta, err := clusterid.ClusterMetadata(c.ExtraConfig.KubeClient.CoreV1().Namespaces())
-		if err != nil {
-			return nil, fmt.Errorf("failed to extract cluster metadata, reason: %v", err)
-		}
-		fn := auditlib.BillingEventCreator{
-			Mapper:          mapper,
-			ClusterMetadata: cmeta,
-		}
-		auditor = auditlib.NewResilientEventPublisher(func() (*auditlib.NatsConfig, error) {
-			return auditlib.NewNatsConfig(c.ExtraConfig.ClientConfig, cmeta.UID, c.ExtraConfig.LicenseFile)
-		}, mapper, fn.CreateEvent)
-		nc, err = auditor.NatsClient()
-		if err != nil {
-			return nil, err
-		}
-
-		if !c.ExtraConfig.License.DisableAnalytics() {
-			err = auditor.SetupSiteInfoPublisher(c.ExtraConfig.ClientConfig, c.ExtraConfig.KubeClient, c.ExtraConfig.KubeInformerFactory)
-			if err != nil {
-				return nil, fmt.Errorf("failed to setup site info publisher, reason: %v", err)
-			}
-		}
-	} else {
-		nc, err = backend.NewConnection(c.ExtraConfig.NATSAddr, c.ExtraConfig.NATSCredFile)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if err = (scanrequest.NewImageScanRequestReconciler(
-		mgr.GetClient(),
-		nc,
-		c.ExtraConfig.ScannerImage,
-		c.ExtraConfig.TrivyImage,
-		c.ExtraConfig.TrivyDBCacherImage,
-		c.ExtraConfig.FileServerAddr,
-		c.ExtraConfig.ScanRequestTTLPeriod,
-	)).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ImageScanRequest")
-		os.Exit(1)
-	}
-	if err = (&scanreport.ImageScanReportReconciler{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		FileServerDir: c.ExtraConfig.FileServerFilesDir,
-		ReportTTL:     c.ExtraConfig.ScanReportTTLPeriod,
+	if err = (&runtimeevent.RuntimeEventReconciler{
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		ReportTTL: c.ExtraConfig.EventTTLPeriod,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ImageScanReport")
+		setupLog.Error(err, "unable to create controller", "controller", "RuntimeEvent")
 		os.Exit(1)
 	}
 
 	setupLog.Info("setup done!")
 
-	s := &ScannerServer{
+	s := &FalcoUIServer{
 		GenericAPIServer: genericServer,
 		Manager:          mgr,
-		NatsClient:       nc,
 	}
 	{
-		apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(scanner.GroupName, Scheme, metav1.ParameterCodec, Codecs)
+		apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(falco.GroupName, Scheme, metav1.ParameterCodec, Codecs)
 
 		v1alpha1storage := map[string]rest.Storage{}
-		{
-			storage, err := requeststorage.NewStorage(Scheme, c.GenericConfig.RESTOptionsGetter)
-			if err != nil {
-				return nil, err
-			}
-			v1alpha1storage[api.ResourceImageScanRequests] = storage.Controller
-			v1alpha1storage[api.ResourceImageScanRequests+"/status"] = storage.Status
-		}
-		{
-			storage, err := reportstorage.NewStorage(Scheme, c.GenericConfig.RESTOptionsGetter)
-			if err != nil {
-				return nil, err
-			}
-			v1alpha1storage[api.ResourceImageScanReports] = storage.Controller
-			v1alpha1storage[api.ResourceImageScanReports+"/status"] = storage.Status
-		}
 		{
 			storage, err := cvestorage.NewStorage(Scheme, c.GenericConfig.RESTOptionsGetter)
 			if err != nil {
 				return nil, err
 			}
-			v1alpha1storage[api.ResourceVulnerabilities] = storage.Controller
-			v1alpha1storage[api.ResourceVulnerabilities+"/status"] = storage.Status
+			v1alpha1storage[api.ResourceRuntimeEvents] = storage.Controller
+			v1alpha1storage[api.ResourceRuntimeEvents+"/status"] = storage.Status
 		}
 		apiGroupInfo.VersionedResourcesStorageMap["v1alpha1"] = v1alpha1storage
 
@@ -290,15 +183,18 @@ func (c completedConfig) New(ctx context.Context) (*ScannerServer, error) {
 			return nil, err
 		}
 	}
-	{
-		prefix := c.ExtraConfig.FileServerPathPrefix
-		if !strings.HasPrefix(prefix, "/") {
-			prefix = "/" + prefix
+	/*
+		{
+			prefix := c.ExtraConfig.FileServerPathPrefix
+			if !strings.HasPrefix(prefix, "/") {
+				prefix = "/" + prefix
+			}
+			if !strings.HasSuffix(prefix, "/") {
+				prefix = prefix + "/"
+			}
+			fmt.Println(prefix)
+			// genericServer.Handler.NonGoRestfulMux.HandlePrefix(prefix, fileserver.Router(prefix, c.ExtraConfig.FileServerFilesDir))
 		}
-		if !strings.HasSuffix(prefix, "/") {
-			prefix = prefix + "/"
-		}
-		genericServer.Handler.NonGoRestfulMux.HandlePrefix(prefix, fileserver.Router(prefix, c.ExtraConfig.FileServerFilesDir))
-	}
+	*/
 	return s, nil
 }

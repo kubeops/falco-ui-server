@@ -1,4 +1,4 @@
-apiVersion: scanner.appscode.com/v1alpha1
+apiVersion: falco.appscode.com/v1alpha1
 kind: ImageScanRequest
 metadata:
   generateName: hello-melange-

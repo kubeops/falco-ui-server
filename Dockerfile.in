@@ -14,7 +14,7 @@
 
 FROM {ARG_FROM}
 
-LABEL org.opencontainers.image.source https://github.com/kubeops/scanner
+LABEL org.opencontainers.image.source https://github.com/kubeops/falco-ui-server
 
 RUN set -x \
   && apk add --update --upgrade --no-cache pcre2 ca-certificates tzdata \

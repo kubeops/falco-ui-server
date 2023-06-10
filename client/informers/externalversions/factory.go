@@ -27,9 +27,9 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
-	versioned "kubeops.dev/scanner/client/clientset/versioned"
-	internalinterfaces "kubeops.dev/scanner/client/informers/externalversions/internalinterfaces"
-	scanner "kubeops.dev/scanner/client/informers/externalversions/scanner"
+	versioned "kubeops.dev/falco-ui-server/client/clientset/versioned"
+	falco "kubeops.dev/falco-ui-server/client/informers/externalversions/falco"
+	internalinterfaces "kubeops.dev/falco-ui-server/client/informers/externalversions/internalinterfaces"
 )
 
 // SharedInformerOption defines the functional option type for SharedInformerFactory.
@@ -172,9 +172,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Scanner() scanner.Interface
+	Falco() falco.Interface
 }
 
-func (f *sharedInformerFactory) Scanner() scanner.Interface {
-	return scanner.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Falco() falco.Interface {
+	return falco.New(f, f.namespace, f.tweakListOptions)
 }

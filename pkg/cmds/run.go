@@ -20,7 +20,7 @@ import (
 	"context"
 	"io"
 
-	"kubeops.dev/scanner/pkg/cmds/server"
+	"kubeops.dev/falco-ui-server/pkg/cmds/server"
 
 	"github.com/spf13/cobra"
 	v "gomodules.xyz/x/version"
@@ -29,15 +29,15 @@ import (
 )
 
 func NewCmdRun(ctx context.Context, out, errOut io.Writer) *cobra.Command {
-	o := server.NewScannerServerOptions(out, errOut)
+	o := server.NewFalcoUIServerOptions(out, errOut)
 
 	cmd := &cobra.Command{
 		Use:               "run",
-		Short:             "Launch a scanner server",
-		Long:              "Launch a scanner server",
+		Short:             "Launch a falco ui server",
+		Long:              "Launch a falco ui server",
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			klog.Infof("Starting ui server version %s+%s ...", v.Version.Version, v.Version.CommitHash)
+			klog.Infof("Starting binary version %s+%s ...", v.Version.Version, v.Version.CommitHash)
 
 			if err := o.Complete(); err != nil {
 				return err

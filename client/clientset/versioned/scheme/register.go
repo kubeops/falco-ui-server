@@ -24,16 +24,14 @@ import (
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	reportsv1alpha1 "kubeops.dev/scanner/apis/reports/v1alpha1"
-	scannerv1alpha1 "kubeops.dev/scanner/apis/scanner/v1alpha1"
+	falcov1alpha1 "kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
 )
 
 var Scheme = runtime.NewScheme()
 var Codecs = serializer.NewCodecFactory(Scheme)
 var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
-	reportsv1alpha1.AddToScheme,
-	scannerv1alpha1.AddToScheme,
+	falcov1alpha1.AddToScheme,
 }
 
 // AddToScheme adds all types of this clientset into the given scheme. This allows composition

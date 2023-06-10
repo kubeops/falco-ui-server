@@ -26,19 +26,14 @@ import (
 
 func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
-		Use:               "scanner [command]",
-		Short:             `scanner by AppsCode`,
+		Use:               "falco-ui-server [command]",
+		Short:             `falco-ui-server by AppsCode`,
 		DisableAutoGenTag: true,
 	}
 
 	rootCmd.AddCommand(v.NewCmdVersion())
 	ctx := genericapiserver.SetupSignalContext()
 	rootCmd.AddCommand(NewCmdRun(ctx, os.Stdout, os.Stderr))
-	rootCmd.AddCommand(NewCmdScanImage())
-	rootCmd.AddCommand(NewCmdDownload())
-	rootCmd.AddCommand(NewCmdScanKubeDB())
-	rootCmd.AddCommand(NewCmdBackend(ctx))
-	rootCmd.AddCommand(NewCmdUploadReport())
 
 	return rootCmd
 }

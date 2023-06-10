@@ -15,18 +15,18 @@
 SHELL=/bin/bash -o pipefail
 
 PRODUCT_OWNER_NAME := appscode
-PRODUCT_NAME       := scanner
+PRODUCT_NAME       := falco-ui-server
 ENFORCE_LICENSE    ?=
 
 GO_PKG   := kubeops.dev
 REPO     := $(notdir $(shell pwd))
-BIN      := scanner
+BIN      := falco-ui-server
 COMPRESS ?= no
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS          ?= "crd:crdVersions={v1},allowDangerousTypes=true"
 CODE_GENERATOR_IMAGE ?= ghcr.io/appscode/gengo:release-1.25
-API_GROUPS           ?= scanner:v1alpha1 reports:v1alpha1
+API_GROUPS           ?= falco:v1alpha1
 
 # Where to push the docker image.
 REGISTRY ?= ghcr.io/appscode
@@ -148,18 +148,6 @@ version:
 # Generate code for Kubernetes types
 .PHONY: clientset
 clientset:
-	@docker run --rm	                                 \
-		-u $$(id -u):$$(id -g)                           \
-		-v /tmp:/.cache                                  \
-		-v $$(pwd):$(DOCKER_REPO_ROOT)                   \
-		-w $(DOCKER_REPO_ROOT)                           \
-		--env HTTP_PROXY=$(HTTP_PROXY)                   \
-		--env HTTPS_PROXY=$(HTTPS_PROXY)                 \
-		$(CODE_GENERATOR_IMAGE)                          \
-		deepcopy-gen                                     \
-			--go-header-file "./hack/license/go.txt"       \
-			--input-dirs "$(GO_PKG)/$(REPO)/apis/trivy"    \
-			--output-file-base zz_generated.deepcopy
 	@docker run --rm                                            \
 		-u $$(id -u):$$(id -g)                                    \
 		-v /tmp:/.cache                                           \
@@ -201,13 +189,13 @@ clientset:
 			"lister,informer"                                       \
 			$(GO_PKG)/$(REPO)/client                                \
 			$(GO_PKG)/$(REPO)/apis                                  \
-			"scanner:v1alpha1"                                      \
+			"falco:v1alpha1"                                      \
 			--go-header-file "./hack/license/go.txt"
 
 # Generate openapi schema
 .PHONY: openapi
 openapi: $(addprefix openapi-, $(subst :,_, $(API_GROUPS)))
-openapi-%: openapi-trivy
+openapi-%:
 	@echo "Generating openapi schema for $(subst _,/,$*)"
 	@mkdir -p .config/api-rules
 	@docker run --rm                                     \
@@ -221,24 +209,8 @@ openapi-%: openapi-trivy
 		openapi-gen                                      \
 			--v 1 --logtostderr                          \
 			--go-header-file "./hack/license/go.txt" \
-			--input-dirs "$(GO_PKG)/$(REPO)/apis/$(subst _,/,$*),$(GO_PKG)/$(REPO)/apis/trivy,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/runtime,k8s.io/apimachinery/pkg/util/intstr,k8s.io/apimachinery/pkg/version,k8s.io/api/core/v1,k8s.io/api/apps/v1,k8s.io/api/rbac/v1,kmodules.xyz/client-go/api/v1" \
+			--input-dirs "$(GO_PKG)/$(REPO)/apis/$(subst _,/,$*),k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/runtime,k8s.io/apimachinery/pkg/util/intstr,k8s.io/apimachinery/pkg/version,k8s.io/api/core/v1,k8s.io/api/apps/v1,k8s.io/api/rbac/v1,kmodules.xyz/client-go/api/v1" \
 			--output-package "$(GO_PKG)/$(REPO)/apis/$(subst _,/,$*)" \
-			--report-filename .config/api-rules/violation_exceptions.list
-openapi-trivy:
-	@echo "Generating openapi schema for trivy"
-	@docker run --rm                                   \
-		-u $$(id -u):$$(id -g)                           \
-		-v /tmp:/.cache                                  \
-		-v $$(pwd):$(DOCKER_REPO_ROOT)                   \
-		-w $(DOCKER_REPO_ROOT)                           \
-		--env HTTP_PROXY=$(HTTP_PROXY)                   \
-		--env HTTPS_PROXY=$(HTTPS_PROXY)                 \
-		$(CODE_GENERATOR_IMAGE)                          \
-		openapi-gen                                      \
-			--v 1 --logtostderr                          \
-			--go-header-file "./hack/license/go.txt" \
-			--input-dirs "$(GO_PKG)/$(REPO)/apis/trivy,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/runtime,k8s.io/apimachinery/pkg/util/intstr,k8s.io/apimachinery/pkg/version,k8s.io/api/core/v1,k8s.io/api/apps/v1,k8s.io/api/rbac/v1,kmodules.xyz/client-go/api/v1" \
-			--output-package "$(GO_PKG)/$(REPO)/apis/trivy" \
 			--report-filename .config/api-rules/violation_exceptions.list
 
 # Generate CRD manifests
@@ -255,7 +227,7 @@ gen-crds:
 		$(CODE_GENERATOR_IMAGE)               \
 		controller-gen                        \
 			$(CRD_OPTIONS)                      \
-			paths="./apis/scanner/v1alpha1/..." \
+			paths="./apis/falco/v1alpha1/..." \
 			output:crd:artifacts:config=crds
 
 .PHONY: manifests
@@ -468,7 +440,6 @@ $(BUILD_DIRS):
 
 KUBE_NAMESPACE    ?= kubeops
 REGISTRY_SECRET   ?=
-LICENSE_FILE      ?=
 IMAGE_PULL_POLICY	?= IfNotPresent
 
 ifeq ($(strip $(REGISTRY_SECRET)),)
@@ -477,27 +448,19 @@ else
 	IMAGE_PULL_SECRETS = --set imagePullSecrets[0].name=$(REGISTRY_SECRET)
 endif
 
-NATS_ADDR     ?= this-is-nats.appscode.ninja:4222
-NATS_USERNAME ?= $(THIS_IS_NATS_USERNAME)
-NATS_PASSWORD ?= $(THIS_IS_NATS_PASSWORD)
-
 .PHONY: install
 install:
 	@cd ../installer; \
-	helm upgrade -i scanner charts/scanner --wait \
+	helm upgrade -i falco-ui-server charts/falco-ui-server --wait \
 		--namespace=$(KUBE_NAMESPACE) --create-namespace \
 		--set app.tag=$(TAG_PROD) \
 		--set imagePullPolicy=$(IMAGE_PULL_POLICY) \
-		--set-file license=$(LICENSE_FILE) \
-		--set nats.addr=$(NATS_ADDR) \
-		--set nats.auth.username=$(NATS_USERNAME) \
-		--set nats.auth.password=$(NATS_PASSWORD) \
 		$(IMAGE_PULL_SECRETS); \
 
 .PHONY: uninstall
 uninstall:
 	@cd ../installer; \
-	helm uninstall scanner --namespace=$(KUBE_NAMESPACE) || true
+	helm uninstall falco-ui-server --namespace=$(KUBE_NAMESPACE) || true
 
 .PHONY: purge
 purge: uninstall
@@ -582,7 +545,7 @@ clean:
 
 .PHONY: run
 run:
-	go run -mod=vendor ./cmd/scanner run \
+	go run -mod=vendor ./cmd/falco-ui-server run \
 		--v=3 \
 		--secure-port=8443 \
 		--kubeconfig=$(KUBECONFIG) \
