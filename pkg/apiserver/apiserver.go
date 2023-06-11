@@ -25,9 +25,9 @@ import (
 	"kubeops.dev/falco-ui-server/apis/falco"
 	"kubeops.dev/falco-ui-server/apis/falco/install"
 	api "kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
-	"kubeops.dev/falco-ui-server/pkg/controllers/runtimeevent"
+	"kubeops.dev/falco-ui-server/pkg/controllers/falcoevent"
 	"kubeops.dev/falco-ui-server/pkg/falcosidekick"
-	cvestorage "kubeops.dev/falco-ui-server/pkg/registry/falco/runtimeevent"
+	festorage "kubeops.dev/falco-ui-server/pkg/registry/falco/falcoevent"
 
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -165,12 +165,12 @@ func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
 		return nil, fmt.Errorf("unable to start manager, reason: %v", err)
 	}
 
-	if err = (&runtimeevent.RuntimeEventReconciler{
+	if err = (&falcoevent.FalcoEventReconciler{
 		Client:    mgr.GetClient(),
 		Scheme:    mgr.GetScheme(),
 		ReportTTL: c.ExtraConfig.EventTTLPeriod,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "RuntimeEvent")
+		setupLog.Error(err, "unable to create controller", "controller", "FalcoEvent")
 		os.Exit(1)
 	}
 	if err = (&falcosidekick.PodReconciler{}).SetupWithManager(mgr); err != nil {
@@ -189,11 +189,11 @@ func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
 
 		v1alpha1storage := map[string]rest.Storage{}
 		{
-			storage, err := cvestorage.NewStorage(Scheme, c.GenericConfig.RESTOptionsGetter)
+			storage, err := festorage.NewStorage(Scheme, c.GenericConfig.RESTOptionsGetter)
 			if err != nil {
 				return nil, err
 			}
-			v1alpha1storage[api.ResourceRuntimeEvents] = storage
+			v1alpha1storage[api.ResourceFalcoEvents] = storage
 		}
 		apiGroupInfo.VersionedResourcesStorageMap["v1alpha1"] = v1alpha1storage
 

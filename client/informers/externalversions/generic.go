@@ -53,8 +53,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=falco.appscode.com, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("runtimeevents"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Falco().V1alpha1().RuntimeEvents().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("falcoevents"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Falco().V1alpha1().FalcoEvents().Informer()}, nil
 
 	}
 

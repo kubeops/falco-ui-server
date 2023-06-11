@@ -25,44 +25,44 @@ import (
 	v1alpha1 "kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
 )
 
-// RuntimeEventLister helps list RuntimeEvents.
+// FalcoEventLister helps list FalcoEvents.
 // All objects returned here must be treated as read-only.
-type RuntimeEventLister interface {
-	// List lists all RuntimeEvents in the indexer.
+type FalcoEventLister interface {
+	// List lists all FalcoEvents in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.RuntimeEvent, err error)
-	// Get retrieves the RuntimeEvent from the index for a given name.
+	List(selector labels.Selector) (ret []*v1alpha1.FalcoEvent, err error)
+	// Get retrieves the FalcoEvent from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.RuntimeEvent, error)
-	RuntimeEventListerExpansion
+	Get(name string) (*v1alpha1.FalcoEvent, error)
+	FalcoEventListerExpansion
 }
 
-// runtimeEventLister implements the RuntimeEventLister interface.
-type runtimeEventLister struct {
+// falcoEventLister implements the FalcoEventLister interface.
+type falcoEventLister struct {
 	indexer cache.Indexer
 }
 
-// NewRuntimeEventLister returns a new RuntimeEventLister.
-func NewRuntimeEventLister(indexer cache.Indexer) RuntimeEventLister {
-	return &runtimeEventLister{indexer: indexer}
+// NewFalcoEventLister returns a new FalcoEventLister.
+func NewFalcoEventLister(indexer cache.Indexer) FalcoEventLister {
+	return &falcoEventLister{indexer: indexer}
 }
 
-// List lists all RuntimeEvents in the indexer.
-func (s *runtimeEventLister) List(selector labels.Selector) (ret []*v1alpha1.RuntimeEvent, err error) {
+// List lists all FalcoEvents in the indexer.
+func (s *falcoEventLister) List(selector labels.Selector) (ret []*v1alpha1.FalcoEvent, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.RuntimeEvent))
+		ret = append(ret, m.(*v1alpha1.FalcoEvent))
 	})
 	return ret, err
 }
 
-// Get retrieves the RuntimeEvent from the index for a given name.
-func (s *runtimeEventLister) Get(name string) (*v1alpha1.RuntimeEvent, error) {
+// Get retrieves the FalcoEvent from the index for a given name.
+func (s *falcoEventLister) Get(name string) (*v1alpha1.FalcoEvent, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("runtimeevent"), name)
+		return nil, errors.NewNotFound(v1alpha1.Resource("falcoevent"), name)
 	}
-	return obj.(*v1alpha1.RuntimeEvent), nil
+	return obj.(*v1alpha1.FalcoEvent), nil
 }

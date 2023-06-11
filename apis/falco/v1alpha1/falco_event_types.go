@@ -22,25 +22,25 @@ import (
 )
 
 const (
-	ResourceKindRuntimeEvent = "RuntimeEvent"
-	ResourceRuntimeEvent     = "runtimeevent"
-	ResourceRuntimeEvents    = "runtimeevents"
+	ResourceKindFalcoEvent = "FalcoEvent"
+	ResourceFalcoEvent     = "falcoevent"
+	ResourceFalcoEvents    = "falcoevents"
 )
 
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type RuntimeEvent struct {
+type FalcoEvent struct {
 	metav1.TypeMeta `json:",inline"`
 	// Name will be formed by hashing the ImageRef + Tag + Digest
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec describes the attributes for the Image Scan SingleReport
-	Spec RuntimeEventSpec `json:"spec,omitempty"`
+	Spec FalcoEventSpec `json:"spec,omitempty"`
 }
 
-type RuntimeEventSpec struct {
+type FalcoEventSpec struct {
 	UUID         string               `json:"uuid,omitempty"`
 	Output       string               `json:"output"`
 	Priority     string               `json:"priority"`
@@ -55,9 +55,9 @@ type RuntimeEventSpec struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type RuntimeEventList struct {
+type FalcoEventList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	// Items is a list of Memcached TPR objects
-	Items []RuntimeEvent `json:"items,omitempty"`
+	Items []FalcoEvent `json:"items,omitempty"`
 }

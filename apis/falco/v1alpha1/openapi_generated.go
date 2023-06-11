@@ -357,9 +357,9 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"kmodules.xyz/client-go/api/v1.TypedObjectReference":                 schema_kmodulesxyz_client_go_api_v1_TypedObjectReference(ref),
 		"kmodules.xyz/client-go/api/v1.X509Subject":                          schema_kmodulesxyz_client_go_api_v1_X509Subject(ref),
 		"kmodules.xyz/client-go/api/v1.stringSetMerger":                      schema_kmodulesxyz_client_go_api_v1_stringSetMerger(ref),
-		"kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEvent":       schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEvent(ref),
-		"kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEventList":   schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEventList(ref),
-		"kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEventSpec":   schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEventSpec(ref),
+		"kubeops.dev/falco-ui-server/apis/falco/v1alpha1.FalcoEvent":         schema_falco_ui_server_apis_falco_v1alpha1_FalcoEvent(ref),
+		"kubeops.dev/falco-ui-server/apis/falco/v1alpha1.FalcoEventList":     schema_falco_ui_server_apis_falco_v1alpha1_FalcoEventList(ref),
+		"kubeops.dev/falco-ui-server/apis/falco/v1alpha1.FalcoEventSpec":     schema_falco_ui_server_apis_falco_v1alpha1_FalcoEventSpec(ref),
 	}
 }
 
@@ -17598,7 +17598,7 @@ func schema_kmodulesxyz_client_go_api_v1_stringSetMerger(ref common.ReferenceCal
 	}
 }
 
-func schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEvent(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_falco_ui_server_apis_falco_v1alpha1_FalcoEvent(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -17629,18 +17629,18 @@ func schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEvent(ref common.Referenc
 						SchemaProps: spec.SchemaProps{
 							Description: "Spec describes the attributes for the Image Scan SingleReport",
 							Default:     map[string]interface{}{},
-							Ref:         ref("kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEventSpec"),
+							Ref:         ref("kubeops.dev/falco-ui-server/apis/falco/v1alpha1.FalcoEventSpec"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta", "kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEventSpec"},
+			"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta", "kubeops.dev/falco-ui-server/apis/falco/v1alpha1.FalcoEventSpec"},
 	}
 }
 
-func schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEventList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_falco_ui_server_apis_falco_v1alpha1_FalcoEventList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -17674,7 +17674,7 @@ func schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEventList(ref common.Refe
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEvent"),
+										Ref:     ref("kubeops.dev/falco-ui-server/apis/falco/v1alpha1.FalcoEvent"),
 									},
 								},
 							},
@@ -17684,11 +17684,11 @@ func schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEventList(ref common.Refe
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta", "kubeops.dev/falco-ui-server/apis/falco/v1alpha1.RuntimeEvent"},
+			"k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta", "kubeops.dev/falco-ui-server/apis/falco/v1alpha1.FalcoEvent"},
 	}
 }
 
-func schema_falco_ui_server_apis_falco_v1alpha1_RuntimeEventSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_falco_ui_server_apis_falco_v1alpha1_FalcoEventSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{

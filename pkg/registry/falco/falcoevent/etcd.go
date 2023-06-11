@@ -18,7 +18,7 @@ package request
 
 import (
 	api "kubeops.dev/falco-ui-server/apis/falco"
-	"kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
+	apiv1alpha1 "kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/registry/generic"
@@ -26,7 +26,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 )
 
-// ControllerStorage includes dummy storage for RuntimeEvents and for Status subresource.
+// ControllerStorage includes dummy storage for FalcoEvents and for Status subresource.
 type ControllerStorage struct {
 	Controller *REST
 }
@@ -44,17 +44,17 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*RES
 	strategy := NewStrategy(scheme)
 
 	store := &genericregistry.Store{
-		NewFunc:                  func() runtime.Object { return &api.RuntimeEvent{} },
-		NewListFunc:              func() runtime.Object { return &api.RuntimeEventList{} },
+		NewFunc:                  func() runtime.Object { return &api.FalcoEvent{} },
+		NewListFunc:              func() runtime.Object { return &api.FalcoEventList{} },
 		PredicateFunc:            MatchController,
-		DefaultQualifiedResource: api.Resource(v1alpha1.ResourceRuntimeEvents),
+		DefaultQualifiedResource: api.Resource(apiv1alpha1.ResourceFalcoEvents),
 
 		CreateStrategy:      strategy,
 		UpdateStrategy:      strategy,
 		DeleteStrategy:      strategy,
 		ResetFieldsStrategy: strategy,
 
-		TableConvertor: NewTableConvertor(api.Resource(v1alpha1.ResourceRuntimeEvents)),
+		TableConvertor: NewTableConvertor(api.Resource(apiv1alpha1.ResourceFalcoEvents)),
 	}
 	options := &generic.StoreOptions{RESTOptions: optsGetter, AttrFunc: GetAttrs}
 	if err := store.CompleteWithOptions(options); err != nil {
@@ -74,7 +74,7 @@ var _ rest.ShortNamesProvider = &REST{}
 
 // ShortNames implements the ShortNamesProvider interface. Returns a list of short names for a resource.
 func (r *REST) ShortNames() []string {
-	return []string{"rte"}
+	return []string{"fe"}
 }
 
 // Implement CategoriesProvider

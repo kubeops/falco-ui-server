@@ -18,6 +18,6 @@ limitations under the License.
 
 package v1alpha1
 
-// RuntimeEventListerExpansion allows custom methods to be added to
-// RuntimeEventLister.
-type RuntimeEventListerExpansion interface{}
+// FalcoEventListerExpansion allows custom methods to be added to
+// FalcoEventLister.
+type FalcoEventListerExpansion interface{}

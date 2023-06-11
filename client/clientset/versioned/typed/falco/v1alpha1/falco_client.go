@@ -28,7 +28,7 @@ import (
 
 type FalcoV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	RuntimeEventsGetter
+	FalcoEventsGetter
 }
 
 // FalcoV1alpha1Client is used to interact with features provided by the falco.appscode.com group.
@@ -36,8 +36,8 @@ type FalcoV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *FalcoV1alpha1Client) RuntimeEvents() RuntimeEventInterface {
-	return newRuntimeEvents(c)
+func (c *FalcoV1alpha1Client) FalcoEvents() FalcoEventInterface {
+	return newFalcoEvents(c)
 }
 
 // NewForConfig creates a new FalcoV1alpha1Client for the given config.

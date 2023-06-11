@@ -28,8 +28,8 @@ type FakeFalcoV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeFalcoV1alpha1) RuntimeEvents() v1alpha1.RuntimeEventInterface {
-	return &FakeRuntimeEvents{c}
+func (c *FakeFalcoV1alpha1) FalcoEvents() v1alpha1.FalcoEventInterface {
+	return &FakeFalcoEvents{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

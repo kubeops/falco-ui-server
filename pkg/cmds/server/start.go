@@ -110,7 +110,7 @@ func (o *FalcoUIServerOptions) Config() (*apiserver.Config, error) {
 	serverConfig.OpenAPIConfig.Info.Version = v.Version.Version
 	serverConfig.OpenAPIConfig.IgnorePrefixes = []string{
 		"/swaggerapi",
-		fmt.Sprintf("/apis/%s/%s", api.SchemeGroupVersion, api.ResourceRuntimeEvents),
+		fmt.Sprintf("/apis/%s/%s", api.SchemeGroupVersion, api.ResourceFalcoEvents),
 	}
 
 	extraConfig := apiserver.ExtraConfig{

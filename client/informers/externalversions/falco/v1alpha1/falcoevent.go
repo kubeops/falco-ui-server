@@ -32,58 +32,58 @@ import (
 	v1alpha1 "kubeops.dev/falco-ui-server/client/listers/falco/v1alpha1"
 )
 
-// RuntimeEventInformer provides access to a shared informer and lister for
-// RuntimeEvents.
-type RuntimeEventInformer interface {
+// FalcoEventInformer provides access to a shared informer and lister for
+// FalcoEvents.
+type FalcoEventInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.RuntimeEventLister
+	Lister() v1alpha1.FalcoEventLister
 }
 
-type runtimeEventInformer struct {
+type falcoEventInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 }
 
-// NewRuntimeEventInformer constructs a new informer for RuntimeEvent type.
+// NewFalcoEventInformer constructs a new informer for FalcoEvent type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewRuntimeEventInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredRuntimeEventInformer(client, resyncPeriod, indexers, nil)
+func NewFalcoEventInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredFalcoEventInformer(client, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredRuntimeEventInformer constructs a new informer for RuntimeEvent type.
+// NewFilteredFalcoEventInformer constructs a new informer for FalcoEvent type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredRuntimeEventInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredFalcoEventInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.FalcoV1alpha1().RuntimeEvents().List(context.TODO(), options)
+				return client.FalcoV1alpha1().FalcoEvents().List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.FalcoV1alpha1().RuntimeEvents().Watch(context.TODO(), options)
+				return client.FalcoV1alpha1().FalcoEvents().Watch(context.TODO(), options)
 			},
 		},
-		&falcov1alpha1.RuntimeEvent{},
+		&falcov1alpha1.FalcoEvent{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *runtimeEventInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredRuntimeEventInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *falcoEventInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredFalcoEventInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *runtimeEventInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&falcov1alpha1.RuntimeEvent{}, f.defaultInformer)
+func (f *falcoEventInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&falcov1alpha1.FalcoEvent{}, f.defaultInformer)
 }
 
-func (f *runtimeEventInformer) Lister() v1alpha1.RuntimeEventLister {
-	return v1alpha1.NewRuntimeEventLister(f.Informer().GetIndexer())
+func (f *falcoEventInformer) Lister() v1alpha1.FalcoEventLister {
+	return v1alpha1.NewFalcoEventLister(f.Informer().GetIndexer())
 }

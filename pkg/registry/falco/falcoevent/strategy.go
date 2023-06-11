@@ -42,7 +42,7 @@ func NewStrategy(typer runtime.ObjectTyper) strategy {
 	return strategy{typer, names.SimpleNameGenerator}
 }
 
-// strategy implements verification logic for RuntimeEvents.
+// strategy implements verification logic for FalcoEvents.
 type strategy struct {
 	runtime.ObjectTyper
 	names.NameGenerator
@@ -64,7 +64,7 @@ func (strategy) DefaultGarbageCollectionPolicy(ctx context.Context) rest.Garbage
 	}
 }
 
-// NamespaceScoped returns true because all RuntimeEvents need to be within a namespace.
+// NamespaceScoped returns true because all FalcoEvents need to be within a namespace.
 func (strategy) NamespaceScoped() bool {
 	return false
 }
@@ -83,16 +83,16 @@ func (strategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
 
 // PrepareForCreate clears the status of a replication controller before creation.
 func (strategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
-	controller := obj.(*api.RuntimeEvent)
-	// controller.Status = api.RuntimeEventStatus{}
+	controller := obj.(*api.FalcoEvent)
+	// controller.Status = api.FalcoEventStatus{}
 
 	controller.Generation = 1
 }
 
 // PrepareForUpdate clears fields that are not allowed to be set by end users on update.
 func (strategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {
-	newController := obj.(*api.RuntimeEvent)
-	oldController := old.(*api.RuntimeEvent)
+	newController := obj.(*api.FalcoEvent)
+	oldController := old.(*api.FalcoEvent)
 	//// update is not allowed to set status
 	//newController.Status = oldController.Status
 
@@ -142,13 +142,13 @@ func (strategy) AllowUnconditionalUpdate() bool {
 }
 
 // ControllerToSelectableFields returns a field set that represents the object.
-func ControllerToSelectableFields(controller *api.RuntimeEvent) fields.Set {
+func ControllerToSelectableFields(controller *api.FalcoEvent) fields.Set {
 	return generic.ObjectMetaFieldsSet(&controller.ObjectMeta, true)
 }
 
 // GetAttrs returns labels and fields of a given object for filtering purposes.
 func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
-	rc, ok := obj.(*api.RuntimeEvent)
+	rc, ok := obj.(*api.FalcoEvent)
 	if !ok {
 		return nil, nil, fmt.Errorf("given object is not a replication controller")
 	}
@@ -181,8 +181,8 @@ func (statusStrategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
 }
 
 func (statusStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {
-	newRc := obj.(*api.RuntimeEvent)
-	oldRc := old.(*api.RuntimeEvent)
+	newRc := obj.(*api.FalcoEvent)
+	oldRc := old.(*api.FalcoEvent)
 	// update is not allowed to set spec
 	newRc.Spec = oldRc.Spec
 }

@@ -20,13 +20,15 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
-	"kubeops.dev/falco-ui-server/apis/falco"
+	api "kubeops.dev/falco-ui-server/apis/falco"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/duration"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 )
@@ -47,38 +49,11 @@ func NewTableConvertor(defaultQualifiedResource schema.GroupResource) rest.Table
 	return defaultTableConvertor{defaultQualifiedResource: defaultQualifiedResource}
 }
 
-var swaggerMetadataDescriptions = metav1.ObjectMeta{}.SwaggerDoc()
-
 func (c defaultTableConvertor) ConvertToTable(ctx context.Context, object runtime.Object, tableOptions runtime.Object) (*metav1.Table, error) {
 	var table metav1.Table
 	fn := func(obj runtime.Object) error {
-		var (
-			image      string
-			reportName string
-			status     string
-		)
-		if o, ok := obj.(*falco.RuntimeEvent); ok {
-			image = o.Spec.Source
-			/*
-				if o.Status.Image != nil {
-					image = o.Status.Image.Name
-					//if o.Status.Image.Digest != "" {
-					//	image = o.Status.Image.Name + "@" + o.Status.Image.Digest
-					//} else if o.Status.Image.Tag != "" {
-					//	image = o.Status.Image.Name + ":" + o.Status.Image.Tag
-					//} else {
-					//	image = o.Status.Image.Name
-					//}
-				}
-				if o.Status.ReportRef != nil {
-					reportName = o.Status.ReportRef.Name
-				}
-				status = string(o.Status.Phase)
-			*/
-		}
-
-		m, err := meta.Accessor(obj)
-		if err != nil {
+		o, ok := obj.(*api.FalcoEvent)
+		if !ok {
 			resource := c.defaultQualifiedResource
 			if info, ok := genericapirequest.RequestInfoFrom(ctx); ok {
 				resource = schema.GroupResource{Group: info.APIGroup, Resource: info.Resource}
@@ -86,12 +61,21 @@ func (c defaultTableConvertor) ConvertToTable(ctx context.Context, object runtim
 			return errNotAcceptable{resource: resource}
 		}
 
+		var pod string
+		podNS := o.Labels["k8s.ns.name"]
+		podName := o.Labels["k8s.pod.name"]
+		if podNS != "" && podName != "" {
+			pod = podNS + "/" + podName
+		}
+
 		table.Rows = append(table.Rows, metav1.TableRow{
 			Cells: []interface{}{
-				m.GetName(),
-				image,
-				reportName,
-				status,
+				ConvertToHumanReadableDateType(o.Spec.Time),
+				o.Spec.Source,
+				o.Spec.Priority,
+				o.Spec.Nodename,
+				pod,
+				o.Spec.Rule,
 			},
 			Object: runtime.RawExtension{Object: obj},
 		})
@@ -118,10 +102,12 @@ func (c defaultTableConvertor) ConvertToTable(ctx context.Context, object runtim
 	}
 	if opt, ok := tableOptions.(*metav1.TableOptions); !ok || !opt.NoHeaders {
 		table.ColumnDefinitions = []metav1.TableColumnDefinition{
-			{Name: "Name", Type: "string", Format: "name", Description: swaggerMetadataDescriptions["name"]},
-			{Name: "Image", Type: "string", Description: ""},
-			{Name: "Report Name", Type: "string", Description: ""},
-			{Name: "Status", Type: "string", Description: ""},
+			{Name: "Last Seen", Type: "string", Description: ""},
+			{Name: "Source", Type: "string", Description: ""},
+			{Name: "Priority", Type: "string", Description: ""},
+			{Name: "Node", Type: "string", Description: ""},
+			{Name: "Pod", Type: "string", Description: ""},
+			{Name: "Rule", Type: "string", Description: ""},
 		}
 	}
 	return &table, nil
@@ -143,4 +129,22 @@ func (e errNotAcceptable) Status() metav1.Status {
 		Reason:  metav1.StatusReason("NotAcceptable"),
 		Message: e.Error(),
 	}
+}
+
+// ConvertToHumanReadableDateType returns the elapsed time since timestamp in
+// human-readable approximation.
+// ref: https://github.com/kubernetes/apimachinery/blob/v0.21.1/pkg/api/meta/table/table.go#L63-L70
+// But works for timestamp before or after now.
+func ConvertToHumanReadableDateType(timestamp metav1.Time) string {
+	if timestamp.IsZero() {
+		return "<unknown>"
+	}
+	var d time.Duration
+	now := time.Now()
+	if now.After(timestamp.Time) {
+		d = now.Sub(timestamp.Time)
+	} else {
+		d = timestamp.Time.Sub(now)
+	}
+	return duration.HumanDuration(d)
 }

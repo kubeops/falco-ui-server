@@ -4,14 +4,14 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
-  name: runtimeevents.falco.appscode.com
+  name: falcoevents.falco.appscode.com
 spec:
   group: falco.appscode.com
   names:
-    kind: RuntimeEvent
-    listKind: RuntimeEventList
-    plural: runtimeevents
-    singular: runtimeevent
+    kind: FalcoEvent
+    listKind: FalcoEventList
+    plural: falcoevents
+    singular: falcoevent
   scope: Namespaced
   versions:
   - name: v1alpha1

@@ -21,18 +21,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// RuntimeEvent defines the vulnerability report a Docker image reference.
+// FalcoEvent defines the vulnerability report a Docker image reference.
 
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type RuntimeEvent struct {
+type FalcoEvent struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
-	Spec RuntimeEventSpec
+	Spec FalcoEventSpec
 }
 
-type RuntimeEventSpec struct {
+type FalcoEventSpec struct {
 	UUID         string
 	Output       string
 	Priority     string
@@ -47,8 +47,8 @@ type RuntimeEventSpec struct {
 
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type RuntimeEventList struct {
+type FalcoEventList struct {
 	metav1.TypeMeta
 	metav1.ListMeta
-	Items []RuntimeEvent
+	Items []FalcoEvent
 }

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package runtimeevent
+package falcoevent
 
 import (
 	"context"
@@ -28,19 +28,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// RuntimeEventReconciler reconciles a RuntimeEvent object
-type RuntimeEventReconciler struct {
+// FalcoEventReconciler reconciles a FalcoEvent object
+type FalcoEventReconciler struct {
 	client.Client
 	Scheme    *runtime.Scheme
 	ReportTTL time.Duration
 }
 
-func (r *RuntimeEventReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *FalcoEventReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	var isrp api.RuntimeEvent
+	var isrp api.FalcoEvent
 	if err := r.Get(ctx, req.NamespacedName, &isrp); err != nil {
-		log.Error(err, "unable to fetch RuntimeEvent")
+		log.Error(err, "unable to fetch FalcoEvent")
 		// we'll ignore not-found errors, since they can't be fixed by an immediate
 		// requeue (we'll need to wait for a new notification), and we can get them
 		// on deleted requests.
@@ -54,8 +54,8 @@ func (r *RuntimeEventReconciler) Reconcile(ctx context.Context, req ctrl.Request
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *RuntimeEventReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *FalcoEventReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&api.RuntimeEvent{}).
+		For(&api.FalcoEvent{}).
 		Complete(r)
 }

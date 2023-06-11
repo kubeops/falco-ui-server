@@ -27,7 +27,7 @@ import (
 var Funcs = func(codecs runtimeserializer.CodecFactory) []interface{} {
 	return []interface{}{
 		// v1alpha1
-		func(s *falco.RuntimeEvent, c fuzz.Continue) {
+		func(s *falco.FalcoEvent, c fuzz.Continue) {
 			c.FuzzNoCustom(s) // fuzz self without calling this function again
 		},
 	}

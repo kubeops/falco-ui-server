@@ -36,12 +36,9 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	rttypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-const testRule string = "Test rule"
 
 // Handler is Falco Sidekick main handler (default).
 func Handler(kc client.Client) http.Handler {
@@ -164,16 +161,14 @@ func newFalcoPayload(payload io.Reader) (types.FalcoPayload, error) {
 }
 
 func forwardEvent(kc client.Client, payload types.FalcoPayload) error {
-	obj := v1alpha1.RuntimeEvent{
+	obj := v1alpha1.FalcoEvent{
 		TypeMeta: v1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName:      "falco-",
-			UID:               rttypes.UID(payload.UUID),
-			CreationTimestamp: metav1.NewTime(payload.Time),
-			Labels:            map[string]string{},
-			Annotations:       nil,
+			GenerateName: "fe-",
+			Labels:       map[string]string{},
+			Annotations:  nil,
 		},
-		Spec: v1alpha1.RuntimeEventSpec{
+		Spec: v1alpha1.FalcoEventSpec{
 			UUID:     payload.UUID,
 			Output:   payload.Output,
 			Priority: payload.Priority.String(),

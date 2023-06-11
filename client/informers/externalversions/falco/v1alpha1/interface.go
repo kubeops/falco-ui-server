@@ -24,8 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// RuntimeEvents returns a RuntimeEventInformer.
-	RuntimeEvents() RuntimeEventInformer
+	// FalcoEvents returns a FalcoEventInformer.
+	FalcoEvents() FalcoEventInformer
 }
 
 type version struct {
@@ -39,7 +39,7 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// RuntimeEvents returns a RuntimeEventInformer.
-func (v *version) RuntimeEvents() RuntimeEventInformer {
-	return &runtimeEventInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+// FalcoEvents returns a FalcoEventInformer.
+func (v *version) FalcoEvents() FalcoEventInformer {
+	return &falcoEventInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
