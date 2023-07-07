@@ -451,6 +451,7 @@ endif
 .PHONY: install
 install:
 	@cd ../installer; \
+	kubectl label ns $(KUBE_NAMESPACE) pod-security.kubernetes.io/enforce=restricted; \
 	helm upgrade -i falco-ui-server charts/falco-ui-server --wait \
 		--namespace=$(KUBE_NAMESPACE) --create-namespace \
 		--set app.tag=$(TAG_PROD) \
