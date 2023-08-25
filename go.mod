@@ -12,7 +12,7 @@ require (
 	go.bytebuilders.dev/license-verifier v0.13.2
 	go.uber.org/automaxprocs v1.5.2
 	gomodules.xyz/encoding v0.0.7
-	gomodules.xyz/logs v0.0.6
+	gomodules.xyz/logs v0.0.7
 	gomodules.xyz/x v0.0.14
 	k8s.io/api v0.25.3
 	k8s.io/apiextensions-apiserver v0.25.3
@@ -21,7 +21,7 @@ require (
 	k8s.io/client-go v0.25.3
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
-	kmodules.xyz/client-go v0.25.23
+	kmodules.xyz/client-go v0.25.30
 	sigs.k8s.io/controller-runtime v0.13.1
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3
 )
@@ -122,7 +122,7 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	gomodules.xyz/clock v0.0.0-20200817085942-06523dba733f // indirect
 	gomodules.xyz/flags v0.1.3 // indirect
-	gomodules.xyz/jsonpatch/v2 v2.3.0 // indirect
+	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	gomodules.xyz/sets v0.2.1 // indirect
 	gomodules.xyz/wait v0.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
