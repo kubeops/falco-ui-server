@@ -32,6 +32,7 @@ import (
 
 	"github.com/google/uuid"
 	jsonx "gomodules.xyz/encoding/json"
+	"gomodules.xyz/sets"
 	core "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,7 +59,6 @@ func Handler(kc client.Client) http.Handler {
 			http.Error(w, "Please send a valid request body", http.StatusBadRequest)
 			return
 		}
-
 		mustForwardEvent(kc, falcopayload)
 	})
 }
@@ -161,6 +161,18 @@ func newFalcoPayload(payload io.Reader) (types.FalcoPayload, error) {
 }
 
 func forwardEvent(kc client.Client, payload types.FalcoPayload) error {
+	var nodeName string
+	if payload.Hostname != "" {
+		var pod core.Pod
+		key := client.ObjectKey{
+			Namespace: meta.PodNamespace(),
+			Name:      payload.Hostname,
+		}
+		if err := kc.Get(context.TODO(), key, &pod); err == nil {
+			nodeName = pod.Spec.NodeName
+		}
+	}
+
 	obj := v1alpha1.FalcoEvent{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
@@ -196,25 +208,24 @@ func forwardEvent(kc client.Client, payload types.FalcoPayload) error {
 			obj.Labels[k] = v.(string)
 		}
 	}
-
-	if payload.Hostname != "" {
-		var pod core.Pod
-		key := client.ObjectKey{
-			Namespace: meta.PodNamespace(),
-			Name:      payload.Hostname,
-		}
-		if err := kc.Get(context.TODO(), key, &pod); err == nil {
-			obj.Labels["k8s.node.name"] = pod.Spec.NodeName
-			obj.Spec.Nodename = pod.Spec.NodeName
-		}
+	if nodeName != "" {
+		obj.Labels["k8s.node.name"] = nodeName
+		obj.Spec.Nodename = nodeName
 	}
 
 	return kc.Create(context.TODO(), &obj)
 }
 
+var eventHashes = sets.NewUint64()
+
 func mustForwardEvent(kc client.Client, payload types.FalcoPayload) {
-	err := forwardEvent(kc, payload)
-	if client.IgnoreAlreadyExists(err) != nil {
-		klog.ErrorS(err, "failed to write falco event")
+	hashKey := payload.HashKey()
+	if !eventHashes.Has(hashKey) {
+		err := forwardEvent(kc, payload)
+		if err = client.IgnoreAlreadyExists(err); err != nil {
+			klog.ErrorS(err, "failed to write falco event")
+		} else {
+			eventHashes.Insert(hashKey)
+		}
 	}
 }

@@ -20,11 +20,14 @@ import (
 	"context"
 	"encoding/json"
 	"expvar"
+	"hash"
 	"text/template"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/embano1/memlog"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/zeebo/xxh3"
 )
 
 // FalcoPayload is a struct to map falco event json
@@ -59,6 +62,42 @@ func (f FalcoPayload) Check() bool {
 		return false
 	}
 	return true
+}
+
+func (f FalcoPayload) HashKey() uint64 {
+	obj := make(map[string]any, 5)
+	obj["hostname"] = f.Hostname
+	obj["priority"] = f.Priority
+	obj["rule"] = f.Rule
+	obj["source"] = f.Source
+
+	fields := make(map[string]any, len(f.OutputFields))
+	for k, v := range f.OutputFields {
+		switch k {
+		case "evt.time", "fd.name", "proc.pid":
+		default:
+			fields[k] = v
+		}
+	}
+	obj["outputFields"] = fields
+
+	h := xxh3.New()
+	deepHashObject(h, obj)
+	return h.Sum64()
+}
+
+// deepHashObject writes specified object to hash using the spew library
+// which follows pointers and prints actual values of the nested objects
+// ensuring the hash does not change when a pointer changes.
+func deepHashObject(hasher hash.Hash, objectToWrite interface{}) {
+	hasher.Reset()
+	printer := spew.ConfigState{
+		Indent:         " ",
+		SortKeys:       true,
+		DisableMethods: true,
+		SpewKeys:       true,
+	}
+	printer.Fprintf(hasher, "%#v", objectToWrite)
 }
 
 // Configuration is a struct to store configuration
