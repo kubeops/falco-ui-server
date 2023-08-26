@@ -39,7 +39,7 @@ func NewExtraOptions() *ExtraOptions {
 		ResyncPeriod:   10 * time.Minute,
 		QPS:            1e6,
 		Burst:          1e6,
-		EventTTLPeriod: time.Hour * 12,
+		EventTTLPeriod: 24 * time.Hour,
 	}
 }
 

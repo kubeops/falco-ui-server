@@ -38,8 +38,8 @@ type FalcoEventReconciler struct {
 func (r *FalcoEventReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	var isrp api.FalcoEvent
-	if err := r.Get(ctx, req.NamespacedName, &isrp); err != nil {
+	var ev api.FalcoEvent
+	if err := r.Get(ctx, req.NamespacedName, &ev); err != nil {
 		log.Error(err, "unable to fetch FalcoEvent")
 		// we'll ignore not-found errors, since they can't be fixed by an immediate
 		// requeue (we'll need to wait for a new notification), and we can get them
@@ -47,8 +47,8 @@ func (r *FalcoEventReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if time.Since(isrp.Spec.Time.Time) >= r.ReportTTL {
-		return ctrl.Result{}, r.Delete(ctx, &isrp)
+	if time.Since(ev.Spec.Time.Time) >= r.ReportTTL {
+		return ctrl.Result{}, r.Delete(ctx, &ev)
 	}
 	return ctrl.Result{}, nil
 }
