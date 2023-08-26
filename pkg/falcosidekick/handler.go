@@ -26,17 +26,18 @@ import (
 	"net/http"
 	"strings"
 	"text/template"
+	"time"
 
 	"kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
 	"kubeops.dev/falco-ui-server/pkg/falcosidekick/types"
 
 	"github.com/google/uuid"
 	jsonx "gomodules.xyz/encoding/json"
-	"gomodules.xyz/sets"
 	core "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
+	cu "kmodules.xyz/client-go/client"
 	"kmodules.xyz/client-go/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -160,7 +161,7 @@ func newFalcoPayload(payload io.Reader) (types.FalcoPayload, error) {
 	return falcopayload, nil
 }
 
-func forwardEvent(kc client.Client, payload types.FalcoPayload) error {
+func forwardEvent(kc client.Client, payload types.FalcoPayload, evHash uint64) error {
 	var nodeName string
 	if payload.Hostname != "" {
 		var pod core.Pod
@@ -173,15 +174,15 @@ func forwardEvent(kc client.Client, payload types.FalcoPayload) error {
 		}
 	}
 
-	obj := v1alpha1.FalcoEvent{
+	obj := &v1alpha1.FalcoEvent{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
 			Kind:       v1alpha1.ResourceKindFalcoEvent,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "fe-",
-			Labels:       map[string]string{},
-			Annotations:  nil,
+			Name:        fmt.Sprintf("fe-%d", evHash),
+			Labels:      map[string]string{},
+			Annotations: nil,
 		},
 		Spec: v1alpha1.FalcoEventSpec{
 			UUID:     payload.UUID,
@@ -213,19 +214,30 @@ func forwardEvent(kc client.Client, payload types.FalcoPayload) error {
 		obj.Spec.Nodename = nodeName
 	}
 
-	return kc.Create(context.TODO(), &obj)
+	_, err = cu.CreateOrPatch(context.TODO(), kc, obj, func(in client.Object, createOp bool) client.Object {
+		o := in.(*v1alpha1.FalcoEvent)
+		o.Labels = obj.Labels
+		o.Spec = obj.Spec
+
+		return o
+	})
+	return err
 }
 
-var eventHashes = sets.NewUint64()
+var eventHashes = make(map[uint64]time.Time)
+
+const eventRefreshTTL = 10 * time.Minute
 
 func mustForwardEvent(kc client.Client, payload types.FalcoPayload) {
 	hashKey := payload.HashKey()
-	if !eventHashes.Has(hashKey) {
-		err := forwardEvent(kc, payload)
+	lastTime, found := eventHashes[hashKey]
+
+	if !found || time.Since(lastTime) > eventRefreshTTL {
+		err := forwardEvent(kc, payload, hashKey)
 		if err = client.IgnoreAlreadyExists(err); err != nil {
 			klog.ErrorS(err, "failed to write falco event")
 		} else {
-			eventHashes.Insert(hashKey)
+			eventHashes[hashKey] = payload.Time
 		}
 	}
 }
