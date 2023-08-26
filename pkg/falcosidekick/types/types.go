@@ -74,8 +74,12 @@ func (f FalcoPayload) HashKey() uint64 {
 	fields := make(map[string]any, len(f.OutputFields))
 	for k, v := range f.OutputFields {
 		switch k {
-		case "evt.time", "fd.name", "proc.pid":
-		default:
+		case "container.id",
+			"container.image.repository",
+			"container.image.tag",
+			"k8s.ns.name",
+			"k8s.pod.name",
+			"proc.cmdline":
 			fields[k] = v
 		}
 	}
