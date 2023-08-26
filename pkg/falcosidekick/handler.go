@@ -35,7 +35,6 @@ import (
 	core "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 	"kmodules.xyz/client-go/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -163,7 +162,10 @@ func newFalcoPayload(payload io.Reader) (types.FalcoPayload, error) {
 
 func forwardEvent(kc client.Client, payload types.FalcoPayload) error {
 	obj := v1alpha1.FalcoEvent{
-		TypeMeta: v1.TypeMeta{},
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1alpha1.SchemeGroupVersion.String(),
+			Kind:       v1alpha1.ResourceKindFalcoEvent,
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "fe-",
 			Labels:       map[string]string{},
