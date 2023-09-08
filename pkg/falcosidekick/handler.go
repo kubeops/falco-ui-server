@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
-	"kubeops.dev/falco-ui-server/pkg/falcosidekick/metricshandler"
 	"kubeops.dev/falco-ui-server/pkg/falcosidekick/types"
 
 	"github.com/google/uuid"
@@ -51,11 +50,8 @@ func Handler(kc client.Client) http.Handler {
 			return
 		}
 
-		if r.Method == http.MethodGet {
-			err := metricshandler.CollectMetrics(kc, w)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-			}
+		if r.Method != http.MethodPost {
+			http.Error(w, "Please send with post http method", http.StatusBadRequest)
 			return
 		}
 

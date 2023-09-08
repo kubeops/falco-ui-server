@@ -27,6 +27,7 @@ import (
 	api "kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
 	"kubeops.dev/falco-ui-server/pkg/controllers/falcoevent"
 	"kubeops.dev/falco-ui-server/pkg/falcosidekick"
+	"kubeops.dev/falco-ui-server/pkg/falcosidekick/metricshandler"
 	festorage "kubeops.dev/falco-ui-server/pkg/registry/falco/falcoevent"
 
 	core "k8s.io/api/core/v1"
@@ -204,6 +205,12 @@ func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
 	{
 		prefix := "/falcoevents"
 		if err := mgr.AddMetricsExtraHandler(prefix, falcosidekick.Handler(mgr.GetClient())); err != nil {
+			return nil, err
+		}
+	}
+	{
+		prefix := "/falcometrics"
+		if err := mgr.AddMetricsExtraHandler(prefix, metricshandler.Handler(mgr.GetClient())); err != nil {
 			return nil, err
 		}
 	}

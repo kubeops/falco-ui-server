@@ -18,6 +18,7 @@ package metricshandler
 
 import (
 	"io"
+	"net/http"
 
 	"kubeops.dev/ui-server/pkg/metricsstore"
 
@@ -29,6 +30,23 @@ import (
 const (
 	falcoMetricPrefix = "falco_appscode_com_"
 )
+
+func Handler(kc client.Client) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body == nil {
+			http.Error(w, "Please send a valid request body", http.StatusBadRequest)
+			return
+		}
+
+		if r.Method == http.MethodGet {
+			err := CollectMetrics(kc, w)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			}
+			return
+		}
+	})
+}
 
 func CollectMetrics(kc client.Client, w io.Writer) error {
 	generators := getFamilyGenerators()

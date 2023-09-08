@@ -100,11 +100,11 @@ func collectFalcoMetrics(kc client.Client, genTotal generator.FamilyGenerator) (
 		}
 		mTotal := metric.Metric{
 			LabelKeys: []string{
-				"node_name",
-				"ns_name",
+				"node",
+				"namespace",
 				"priority",
 				"rule",
-				"pod_name",
+				"pod",
 			},
 			LabelValues: []string{
 				c.node,
