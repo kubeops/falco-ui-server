@@ -206,7 +206,10 @@ func forwardEvent(kc client.Client, payload types.FalcoPayload, evHash uint64) e
 	for k, v := range payload.OutputFields {
 		switch k {
 		case "k8s.ns.name", "k8s.pod.name":
-			obj.Labels[k] = v.(string)
+			val, ok := v.(string)
+			if ok {
+				obj.Labels[k] = val
+			}
 		}
 	}
 	if nodeName != "" {
