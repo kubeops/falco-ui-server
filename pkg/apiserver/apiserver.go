@@ -144,9 +144,9 @@ func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
 		HealthProbeBindAddress: "",
 		LeaderElection:         false,
 		LeaderElectionID:       "5b87adeb.falco.appscode.com",
-		//ClientDisableCacheFor: []client.Object{
-		//	&core.Pod{},
-		//},
+		ClientDisableCacheFor: []client.Object{
+			&api.FalcoEvent{},
+		},
 		NewClient: cu.NewClient,
 		NewCache: func(config *restclient.Config, opts cache.Options) (cache.Cache, error) {
 			if opts.SelectorsByObject == nil {
