@@ -19,13 +19,12 @@ package apiserver
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"kubeops.dev/falco-ui-server/apis/falco"
 	"kubeops.dev/falco-ui-server/apis/falco/install"
 	api "kubeops.dev/falco-ui-server/apis/falco/v1alpha1"
-	"kubeops.dev/falco-ui-server/pkg/controllers/falcoevent"
+	"kubeops.dev/falco-ui-server/pkg/cleaner"
 	"kubeops.dev/falco-ui-server/pkg/falcosidekick"
 	"kubeops.dev/falco-ui-server/pkg/falcosidekick/metricshandler"
 	festorage "kubeops.dev/falco-ui-server/pkg/registry/falco/falcoevent"
@@ -63,6 +62,7 @@ var (
 func init() {
 	install.Install(Scheme)
 	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
+	utilruntime.Must(api.AddToScheme(Scheme))
 
 	// we need to add the options to empty v1
 	// TODO fix the server code to avoid this
@@ -166,19 +166,6 @@ func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
 		return nil, fmt.Errorf("unable to start manager, reason: %v", err)
 	}
 
-	if err = (&falcoevent.FalcoEventReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		ReportTTL: c.ExtraConfig.EventTTLPeriod,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "FalcoEvent")
-		os.Exit(1)
-	}
-	if err = (&falcosidekick.PodReconciler{}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Pod")
-		os.Exit(1)
-	}
-
 	setupLog.Info("setup done!")
 
 	s := &FalcoUIServer{
@@ -202,6 +189,7 @@ func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
 			return nil, err
 		}
 	}
+	go cleaner.StartCleaner(mgr.GetClient(), c.ExtraConfig.EventTTLPeriod)
 	{
 		prefix := "/falcoevents"
 		if err := mgr.AddMetricsExtraHandler(prefix, falcosidekick.Handler(mgr.GetClient())); err != nil {
