@@ -23,7 +23,6 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeFalcoEvents struct {
 	Fake *FakeFalcoV1alpha1
 }
 
-var falcoeventsResource = schema.GroupVersionResource{Group: "falco.appscode.com", Version: "v1alpha1", Resource: "falcoevents"}
+var falcoeventsResource = v1alpha1.SchemeGroupVersion.WithResource("falcoevents")
 
-var falcoeventsKind = schema.GroupVersionKind{Group: "falco.appscode.com", Version: "v1alpha1", Kind: "FalcoEvent"}
+var falcoeventsKind = v1alpha1.SchemeGroupVersion.WithKind("FalcoEvent")
 
 // Get takes name of the falcoEvent, and returns the corresponding falcoEvent object, and an error if there is any.
 func (c *FakeFalcoEvents) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.FalcoEvent, err error) {
