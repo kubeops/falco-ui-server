@@ -19,6 +19,7 @@ package apiserver
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"kubeops.dev/falco-ui-server/apis/falco"
@@ -49,6 +50,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 var (
@@ -133,38 +135,44 @@ func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
 	}
 
 	// ctrl.SetLogger(...)
-	log.SetLogger(klogr.New())
+	log.SetLogger(klogr.New()) // nolint:staticcheck
 	setupLog := log.Log.WithName("setup")
 
 	cfg := c.ExtraConfig.ClientConfig
+	metricsHandlers := map[string]http.Handler{}
 	mgr, err := manager.New(cfg, manager.Options{
-		Scheme:                 Scheme,
-		MetricsBindAddress:     "",
-		Port:                   0,
+		Scheme: Scheme,
+		Metrics: metricsserver.Options{
+			BindAddress:   "",
+			ExtraHandlers: metricsHandlers,
+		},
 		HealthProbeBindAddress: "",
 		LeaderElection:         false,
 		LeaderElectionID:       "5b87adeb.falco.appscode.com",
-		ClientDisableCacheFor: []client.Object{
-			&api.FalcoEvent{},
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				DisableFor: []client.Object{
+					&api.FalcoEvent{},
+				},
+			},
 		},
 		NewClient: cu.NewClient,
-		NewCache: func(config *restclient.Config, opts cache.Options) (cache.Cache, error) {
-			if opts.SelectorsByObject == nil {
-				opts.SelectorsByObject = map[client.Object]cache.ObjectSelector{}
-			}
-			// https://github.com/falcosecurity/charts/blob/master/falco/templates/_helpers.tpl#L56-L57
-			opts.SelectorsByObject[&core.Pod{}] = cache.ObjectSelector{
-				Label: labels.SelectorFromSet(map[string]string{
-					"app.kubernetes.io/name": "falco",
-				}),
-			}
-			return cache.New(config, opts)
+		Cache: cache.Options{
+			SyncPeriod: &c.ExtraConfig.ResyncPeriod,
+			ByObject: map[client.Object]cache.ByObject{
+				new(core.Pod): {
+					Label: labels.SelectorFromSet(map[string]string{
+						"app.kubernetes.io/name": "falco",
+					}),
+				},
+			},
 		},
-		SyncPeriod: &c.ExtraConfig.ResyncPeriod,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to start manager, reason: %v", err)
 	}
+	metricsHandlers["/falcoevents"] = falcosidekick.Handler(mgr.GetClient())
+	metricsHandlers["/falcometrics"] = metricshandler.Handler(mgr.GetClient())
 
 	setupLog.Info("setup done!")
 
@@ -190,17 +198,5 @@ func (c completedConfig) New(ctx context.Context) (*FalcoUIServer, error) {
 		}
 	}
 	go cleaner.StartCleaner(mgr.GetClient(), c.ExtraConfig.EventTTLPeriod)
-	{
-		prefix := "/falcoevents"
-		if err := mgr.AddMetricsExtraHandler(prefix, falcosidekick.Handler(mgr.GetClient())); err != nil {
-			return nil, err
-		}
-	}
-	{
-		prefix := "/falcometrics"
-		if err := mgr.AddMetricsExtraHandler(prefix, metricshandler.Handler(mgr.GetClient())); err != nil {
-			return nil, err
-		}
-	}
 	return s, nil
 }
