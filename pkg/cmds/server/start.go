@@ -33,7 +33,6 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
 	"k8s.io/apiserver/pkg/util/feature"
-	ou "kmodules.xyz/client-go/openapi"
 	"kmodules.xyz/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -101,17 +100,24 @@ func (o *FalcoUIServerOptions) Config() (*apiserver.Config, error) {
 	// Fixes https://github.com/Azure/AKS/issues/522
 	clientcmd.Fix(serverConfig.ClientConfig)
 
-	serverConfig.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(
-		ou.GetDefinitions(
-			api.GetOpenAPIDefinitions,
-		),
-		openapi.NewDefinitionNamer(apiserver.Scheme))
-	serverConfig.OpenAPIConfig.Info.Title = "Falco UI Server"
-	serverConfig.OpenAPIConfig.Info.Version = v.Version.Version
-	serverConfig.OpenAPIConfig.IgnorePrefixes = []string{
+	ignorePrefixes := []string{
 		"/swaggerapi",
 		fmt.Sprintf("/apis/%s/%s", api.SchemeGroupVersion, api.ResourceFalcoEvents),
 	}
+
+	serverConfig.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(
+		api.GetOpenAPIDefinitions,
+		openapi.NewDefinitionNamer(apiserver.Scheme))
+	serverConfig.OpenAPIConfig.Info.Title = "Falco UI Server"
+	serverConfig.OpenAPIConfig.Info.Version = v.Version.Version
+	serverConfig.OpenAPIConfig.IgnorePrefixes = ignorePrefixes
+
+	serverConfig.OpenAPIV3Config = genericapiserver.DefaultOpenAPIV3Config(
+		api.GetOpenAPIDefinitions,
+		openapi.NewDefinitionNamer(apiserver.Scheme))
+	serverConfig.OpenAPIV3Config.Info.Title = "Falco UI Server"
+	serverConfig.OpenAPIV3Config.Info.Version = v.Version.Version
+	serverConfig.OpenAPIV3Config.IgnorePrefixes = ignorePrefixes
 
 	extraConfig := apiserver.ExtraConfig{
 		ClientConfig:   serverConfig.ClientConfig,
