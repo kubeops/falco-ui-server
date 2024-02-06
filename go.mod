@@ -28,7 +28,7 @@ require (
 	k8s.io/kube-state-metrics/v2 v2.7.0
 	kmodules.xyz/client-go v0.29.6
 	kubeops.dev/ui-server v0.0.39
-	sigs.k8s.io/controller-runtime v0.16.3
+	sigs.k8s.io/controller-runtime v0.17.0
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1
 )
 
