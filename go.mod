@@ -1,6 +1,8 @@
 module kubeops.dev/falco-ui-server
 
-go 1.21.6
+go 1.21.5
+
+toolchain go1.21.6
 
 require (
 	github.com/davecgh/go-spew v1.1.1

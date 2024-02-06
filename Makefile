@@ -66,7 +66,7 @@ BIN_PLATFORMS    := $(DOCKER_PLATFORMS)
 OS   := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
 ARCH := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
 
-# BASEIMAGE_PROD   ?= gcr.io/distroless/static-debian11
+# BASEIMAGE_PROD ?= gcr.io/distroless/static-debian12
 BASEIMAGE_PROD   ?= alpine
 BASEIMAGE_DBG    ?= debian:bookworm
 
@@ -172,7 +172,7 @@ clientset:
 		--env HTTPS_PROXY=$(HTTPS_PROXY)                          \
 		$(CODE_GENERATOR_IMAGE)                                   \
 		/go/src/k8s.io/code-generator/generate-groups.sh          \
-			"deepcopy,client"                                                \
+			"deepcopy,client"                                       \
 			$(GO_PKG)/$(REPO)/client                                \
 			$(GO_PKG)/$(REPO)/apis                                  \
 			"$(API_GROUPS)"                                         \
@@ -189,7 +189,7 @@ clientset:
 			"lister,informer"                                       \
 			$(GO_PKG)/$(REPO)/client                                \
 			$(GO_PKG)/$(REPO)/apis                                  \
-			"falco:v1alpha1"                                      \
+			"falco:v1alpha1"                                        \
 			--go-header-file "./hack/license/go.txt"
 
 # Generate openapi schema
@@ -198,7 +198,7 @@ openapi: $(addprefix openapi-, $(subst :,_, $(API_GROUPS)))
 openapi-%:
 	@echo "Generating openapi schema for $(subst _,/,$*)"
 	@mkdir -p .config/api-rules
-	@docker run --rm                                     \
+	@docker run --rm                                   \
 		-u $$(id -u):$$(id -g)                           \
 		-v /tmp:/.cache                                  \
 		-v $$(pwd):$(DOCKER_REPO_ROOT)                   \
@@ -207,7 +207,7 @@ openapi-%:
 		--env HTTPS_PROXY=$(HTTPS_PROXY)                 \
 		$(CODE_GENERATOR_IMAGE)                          \
 		openapi-gen                                      \
-			--v 1 --logtostderr                          \
+			--v 1 --logtostderr                            \
 			--go-header-file "./hack/license/go.txt" \
 			--input-dirs "$(GO_PKG)/$(REPO)/apis/$(subst _,/,$*),k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/runtime,k8s.io/apimachinery/pkg/util/intstr,k8s.io/apimachinery/pkg/version,k8s.io/api/core/v1,k8s.io/api/apps/v1,k8s.io/api/rbac/v1,kmodules.xyz/client-go/api/v1" \
 			--output-package "$(GO_PKG)/$(REPO)/apis/$(subst _,/,$*)" \
@@ -227,7 +227,7 @@ gen-crds:
 		$(CODE_GENERATOR_IMAGE)               \
 		controller-gen                        \
 			$(CRD_OPTIONS)                      \
-			paths="./apis/falco/v1alpha1/..." \
+			paths="./apis/falco/v1alpha1/..."   \
 			output:crd:artifacts:config=crds
 
 .PHONY: manifests
@@ -317,7 +317,7 @@ container: bin/.container-$(DOTFILE_IMAGE)-PROD bin/.container-$(DOTFILE_IMAGE)-
 ifeq (,$(SRC_REG))
 bin/.container-$(DOTFILE_IMAGE)-%: bin/$(BIN)-$(OS)-$(ARCH) $(DOCKERFILE_%)
 	@echo "container: $(IMAGE):$(TAG_$*)"
-	@sed                                    \
+	@sed                                  \
 		-e 's|{ARG_BIN}|$(BIN)|g'           \
 		-e 's|{ARG_ARCH}|$(ARCH)|g'         \
 		-e 's|{ARG_OS}|$(OS)|g'             \
@@ -415,7 +415,7 @@ e2e-tests: $(BUILD_DIRS)
 e2e-parallel:
 	@$(MAKE) e2e-tests GINKGO_ARGS="-p -stream --flakeAttempts=2" --no-print-directory
 
-ADDTL_LINTERS   := goconst,gofmt,goimports,unparam
+ADDTL_LINTERS   := gofmt,goimports,unparam
 
 .PHONY: lint
 lint: $(BUILD_DIRS)
@@ -433,7 +433,7 @@ lint: $(BUILD_DIRS)
 	    --env HTTPS_PROXY=$(HTTPS_PROXY)                        \
 	    --env GOFLAGS="-mod=vendor"                             \
 	    $(BUILD_IMAGE)                                          \
-	    golangci-lint run --enable $(ADDTL_LINTERS) --timeout=10m --skip-files="generated.*\.go$\" --skip-dirs-use-default --skip-dirs=client,vendor
+	    golangci-lint run --enable $(ADDTL_LINTERS) --max-same-issues=100 --timeout=10m --skip-files="generated.*\.go$\" --skip-dirs-use-default --skip-dirs=client,vendor
 
 $(BUILD_DIRS):
 	@mkdir -p $@

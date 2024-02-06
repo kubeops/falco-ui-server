@@ -44,10 +44,11 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*RES
 	strategy := NewStrategy(scheme)
 
 	store := &genericregistry.Store{
-		NewFunc:                  func() runtime.Object { return &api.FalcoEvent{} },
-		NewListFunc:              func() runtime.Object { return &api.FalcoEventList{} },
-		PredicateFunc:            MatchController,
-		DefaultQualifiedResource: api.Resource(apiv1alpha1.ResourceFalcoEvents),
+		NewFunc:                   func() runtime.Object { return &api.FalcoEvent{} },
+		NewListFunc:               func() runtime.Object { return &api.FalcoEventList{} },
+		PredicateFunc:             MatchController,
+		DefaultQualifiedResource:  api.Resource(apiv1alpha1.ResourceFalcoEvents),
+		SingularQualifiedResource: api.Resource(apiv1alpha1.ResourceFalcoEvent),
 
 		CreateStrategy:      strategy,
 		UpdateStrategy:      strategy,
