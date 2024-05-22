@@ -38,7 +38,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 	cu "kmodules.xyz/client-go/client"
-	"kmodules.xyz/client-go/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -164,13 +163,19 @@ func newFalcoPayload(payload io.Reader) (types.FalcoPayload, error) {
 func forwardEvent(kc client.Client, payload types.FalcoPayload, evHash uint64) error {
 	var nodeName string
 	if payload.Hostname != "" {
-		var pod core.Pod
-		key := client.ObjectKey{
-			Namespace: meta.PodNamespace(),
-			Name:      payload.Hostname,
-		}
-		if err := kc.Get(context.TODO(), key, &pod); err == nil {
-			nodeName = pod.Spec.NodeName
+		nodeName = payload.Hostname
+	} else {
+		podName := payload.OutputFields["k8s.pod.name"].(string)
+		nsName := payload.OutputFields["k8s.ns.name"].(string)
+		if podName != "" && nsName != "" {
+			var pod core.Pod
+			key := client.ObjectKey{
+				Namespace: nsName,
+				Name:      podName,
+			}
+			if err := kc.Get(context.TODO(), key, &pod); err == nil {
+				nodeName = pod.Spec.NodeName
+			}
 		}
 	}
 
