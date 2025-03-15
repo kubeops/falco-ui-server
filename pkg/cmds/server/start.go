@@ -29,10 +29,9 @@ import (
 	v "gomodules.xyz/x/version"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/endpoints/openapi"
-	"k8s.io/apiserver/pkg/features"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
-	"k8s.io/apiserver/pkg/util/feature"
+	utilversion "k8s.io/component-base/version"
 	"kmodules.xyz/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -51,7 +50,6 @@ type FalcoUIServerOptions struct {
 
 // NewFalcoUIServerOptions returns a new FalcoUIServerOptions
 func NewFalcoUIServerOptions(out, errOut io.Writer) *FalcoUIServerOptions {
-	_ = feature.DefaultMutableFeatureGate.Set(fmt.Sprintf("%s=false", features.APIPriorityAndFairness))
 	o := &FalcoUIServerOptions{
 		RecommendedOptions: genericoptions.NewRecommendedOptions(
 			defaultEtcdPathPrefix,
@@ -105,6 +103,8 @@ func (o *FalcoUIServerOptions) Config() (*apiserver.Config, error) {
 		fmt.Sprintf("/apis/%s/%s", api.SchemeGroupVersion, api.ResourceFalcoEvents),
 	}
 
+	serverConfig.EffectiveVersion = utilversion.NewEffectiveVersion("v1.0.0")
+
 	serverConfig.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(
 		api.GetOpenAPIDefinitions,
 		openapi.NewDefinitionNamer(apiserver.Scheme))
@@ -147,12 +147,12 @@ func (o FalcoUIServerOptions) Run(ctx context.Context) error {
 	}
 
 	server.GenericAPIServer.AddPostStartHookOrDie("start-informers", func(context genericapiserver.PostStartHookContext) error {
-		config.GenericConfig.SharedInformerFactory.Start(context.StopCh)
+		config.GenericConfig.SharedInformerFactory.Start(context.Done())
 		return nil
 	})
 
 	err = server.Manager.Add(manager.RunnableFunc(func(ctx context.Context) error {
-		return server.GenericAPIServer.PrepareRun().Run(ctx.Done())
+		return server.GenericAPIServer.PrepareRun().RunWithContext(ctx)
 	}))
 	if err != nil {
 		return err
