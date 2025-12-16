@@ -69,7 +69,7 @@ func CollectMetrics(kc client.Client, w io.Writer) error {
 }
 
 func getFamilyGenerators() []generator.FamilyGenerator {
-	fn := func(obj interface{}) *metric.Family { return new(metric.Family) }
+	fn := func(obj any) *metric.Family { return new(metric.Family) }
 	generators := make([]generator.FamilyGenerator, 0, 1)
 	generators = append(generators, generator.FamilyGenerator{
 		Name:              falcoMetricPrefix + "events",

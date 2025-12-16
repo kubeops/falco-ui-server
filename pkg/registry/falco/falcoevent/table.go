@@ -69,7 +69,7 @@ func (c defaultTableConvertor) ConvertToTable(ctx context.Context, object runtim
 		}
 
 		table.Rows = append(table.Rows, metav1.TableRow{
-			Cells: []interface{}{
+			Cells: []any{
 				ConvertToHumanReadableDateType(o.Spec.Time),
 				o.Spec.Source,
 				o.Spec.Priority,
@@ -144,7 +144,7 @@ func ConvertToHumanReadableDateType(timestamp metav1.Time) string {
 	if now.After(timestamp.Time) {
 		d = now.Sub(timestamp.Time)
 	} else {
-		d = timestamp.Time.Sub(now)
+		d = timestamp.Sub(now)
 	}
 	return duration.HumanDuration(d)
 }

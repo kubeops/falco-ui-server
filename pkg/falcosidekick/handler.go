@@ -76,7 +76,7 @@ func newFalcoPayload(payload io.Reader) (types.FalcoPayload, error) {
 
 	if len(config.Customfields) > 0 {
 		if falcopayload.OutputFields == nil {
-			falcopayload.OutputFields = make(map[string]interface{})
+			falcopayload.OutputFields = make(map[string]any)
 		}
 		for key, value := range config.Customfields {
 			falcopayload.OutputFields[key] = value
@@ -103,7 +103,7 @@ func newFalcoPayload(payload io.Reader) (types.FalcoPayload, error) {
 
 	if len(config.Templatedfields) > 0 {
 		if falcopayload.OutputFields == nil {
-			falcopayload.OutputFields = make(map[string]interface{})
+			falcopayload.OutputFields = make(map[string]any)
 		}
 		for key, value := range config.Templatedfields {
 			tmpl, err := template.New("").Parse(value)

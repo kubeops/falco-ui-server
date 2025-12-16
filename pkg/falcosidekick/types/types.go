@@ -32,15 +32,15 @@ import (
 
 // FalcoPayload is a struct to map falco event json
 type FalcoPayload struct {
-	UUID         string                 `json:"uuid,omitempty"`
-	Output       string                 `json:"output"`
-	Priority     PriorityType           `json:"priority"`
-	Rule         string                 `json:"rule"`
-	Time         time.Time              `json:"time"`
-	OutputFields map[string]interface{} `json:"output_fields"`
-	Source       string                 `json:"source"`
-	Tags         []string               `json:"tags,omitempty"`
-	Hostname     string                 `json:"hostname,omitempty"`
+	UUID         string         `json:"uuid,omitempty"`
+	Output       string         `json:"output"`
+	Priority     PriorityType   `json:"priority"`
+	Rule         string         `json:"rule"`
+	Time         time.Time      `json:"time"`
+	OutputFields map[string]any `json:"output_fields"`
+	Source       string         `json:"source"`
+	Tags         []string       `json:"tags,omitempty"`
+	Hostname     string         `json:"hostname,omitempty"`
 }
 
 func (f FalcoPayload) String() string {
@@ -92,7 +92,7 @@ func (f FalcoPayload) HashKey() uint64 {
 // deepHashObject writes specified object to hash using the spew library
 // which follows pointers and prints actual values of the nested objects
 // ensuring the hash does not change when a pointer changes.
-func deepHashObject(hasher hash.Hash, objectToWrite interface{}) {
+func deepHashObject(hasher hash.Hash, objectToWrite any) {
 	hasher.Reset()
 	printer := spew.ConfigState{
 		Indent:         " ",
@@ -100,7 +100,7 @@ func deepHashObject(hasher hash.Hash, objectToWrite interface{}) {
 		DisableMethods: true,
 		SpewKeys:       true,
 	}
-	printer.Fprintf(hasher, "%#v", objectToWrite)
+	_, _ = printer.Fprintf(hasher, "%#v", objectToWrite)
 }
 
 // Configuration is a struct to store configuration
