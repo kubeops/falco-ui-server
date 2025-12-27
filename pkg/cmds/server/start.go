@@ -31,7 +31,7 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/openapi"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
-	utilversion "k8s.io/component-base/version"
+	basecompatibility "k8s.io/component-base/compatibility"
 	"kmodules.xyz/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -103,7 +103,7 @@ func (o *FalcoUIServerOptions) Config() (*apiserver.Config, error) {
 		fmt.Sprintf("/apis/%s/%s", api.SchemeGroupVersion, api.ResourceFalcoEvents),
 	}
 
-	serverConfig.EffectiveVersion = utilversion.NewEffectiveVersion("v1.0.0")
+	serverConfig.EffectiveVersion = basecompatibility.NewEffectiveVersionFromString("v1.0.0", "", "")
 
 	serverConfig.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(
 		api.GetOpenAPIDefinitions,
