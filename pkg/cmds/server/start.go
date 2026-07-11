@@ -107,14 +107,16 @@ func (o *FalcoUIServerOptions) Config() (*apiserver.Config, error) {
 
 	serverConfig.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(
 		api.GetOpenAPIDefinitions,
-		openapi.NewDefinitionNamer(apiserver.Scheme))
+		openapi.NewDefinitionNamer(apiserver.Scheme),
+	)
 	serverConfig.OpenAPIConfig.Info.Title = "Falco UI Server"
 	serverConfig.OpenAPIConfig.Info.Version = v.Version.Version
 	serverConfig.OpenAPIConfig.IgnorePrefixes = ignorePrefixes
 
 	serverConfig.OpenAPIV3Config = genericapiserver.DefaultOpenAPIV3Config(
 		api.GetOpenAPIDefinitions,
-		openapi.NewDefinitionNamer(apiserver.Scheme))
+		openapi.NewDefinitionNamer(apiserver.Scheme),
+	)
 	serverConfig.OpenAPIV3Config.Info.Title = "Falco UI Server"
 	serverConfig.OpenAPIV3Config.Info.Version = v.Version.Version
 	serverConfig.OpenAPIV3Config.IgnorePrefixes = ignorePrefixes
